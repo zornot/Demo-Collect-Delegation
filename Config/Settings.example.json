@@ -1,0 +1,20 @@
+{
+    "_comment": "Copier vers Settings.json et remplir les vraies valeurs",
+    "_version": "1.0.0",
+
+    "Application": {
+        "Name": "[NomProjet]",
+        "Environment": "DEV",
+        "LogLevel": "Info"
+    },
+
+    "Paths": {
+        "Logs": "./Logs",
+        "Output": "./Output"
+    },
+
+    "Retention": {
+        "LogDays": 30,
+        "OutputDays": 7
+    }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "powershell-project-template",
+  "version": "1.0.0",
+  "url": "https://github.com/zornot/claude-code-powershell-template",
+  "requiredFiles": [
+    ".claude/settings.json",
+    ".claude/commands/",
+    ".claude/skills/",
+    "CLAUDE.md",
+    ".gitignore"
+  ]
+}

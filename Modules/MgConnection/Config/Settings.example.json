@@ -1,0 +1,33 @@
+{
+  "_comment": "Copier vers Settings.json et configurer selon votre environnement",
+  "_version": "1.0.0",
+
+  "authentication": {
+    "mode": "Interactive",
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "retryCount": 3,
+    "retryDelaySeconds": 2,
+
+    "interactive": {
+      "scopes": ["Application.Read.All", "Directory.Read.All"],
+      "persistCache": false,
+      "$comment_persistCache": "true = cache persistant entre sessions PS (SSO via fichier .mg). false = popup a chaque nouvelle session PS."
+    },
+
+    "certificate": {
+      "clientId": "00000000-0000-0000-0000-000000000000",
+      "tenantId": "00000000-0000-0000-0000-000000000000",
+      "thumbprint": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    },
+
+    "clientSecret": {
+      "clientId": "00000000-0000-0000-0000-000000000000",
+      "tenantId": "00000000-0000-0000-0000-000000000000",
+      "secretVariable": "MG_CLIENT_SECRET"
+    },
+
+    "managedIdentity": {
+      "clientId": null
+    }
+  }
+}

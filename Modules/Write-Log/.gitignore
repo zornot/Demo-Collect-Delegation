@@ -1,0 +1,106 @@
+# ========================================
+# SORTIES GENEREES
+# ========================================
+Output/
+Logs/
+Reports/
+*.log
+*.csv
+*.xlsx
+*.html
+
+# ========================================
+# TESTS
+# ========================================
+Tests/Coverage/
+TestResults/
+*.trx
+coverage.xml
+
+# ========================================
+# FICHIERS TEMPORAIRES
+# ========================================
+*.tmp
+*.temp
+~$*
+.temp/
+*.checkpoint.json
+
+# ========================================
+# IDE ET EDITEURS
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.user
+
+# ========================================
+# OS WINDOWS
+# ========================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ========================================
+# OS MACOS
+# ========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ========================================
+# POWERSHELL DEBUG
+# ========================================
+*.pdb
+*.TempPoint.ps1
+*.RestorePoint.ps1
+
+# ========================================
+# SECRETS ET CREDENTIALS
+# ========================================
+*.credentials
+*.secret
+*.key
+*.pfx
+*.cer
+appsettings.Development.json
+Settings.json
+!Settings.example.json
+.env
+.env.*
+!.env.example
+
+# ========================================
+# SAUVEGARDES
+# ========================================
+*.bak
+*.backup
+*.old
+Backups/
+.backup/
+
+# ========================================
+# DEPENDANCES
+# ========================================
+node_modules/
+packages/
+
+# ========================================
+# DOSSIER START (fichiers de reference)
+# ========================================
+Start/
+
+# ========================================
+# CONSERVATION STRUCTURE (README.md)
+# ========================================
+!Output/README.md
+!Logs/README.md
+!Backups/README.md
+!.temp/README.md
+!Tests/Coverage/.gitkeep

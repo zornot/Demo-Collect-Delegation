@@ -1,0 +1,32 @@
+{
+    "_comment": "Copier vers Settings.json et remplir les vraies valeurs",
+    "_version": "1.0.0",
+
+    "Logging": {
+        "DefaultLevel": "INFO",
+        "LogDirectory": "./Logs",
+        "FilePattern": "{ScriptName}_{yyyy-MM-dd}.log",
+        "RetentionDays": 30,
+        "ArchiveEnabled": true,
+        "ArchiveDirectory": "./Logs/Archive"
+    },
+
+    "Console": {
+        "Enabled": true,
+        "Colors": {
+            "DEBUG": "Gray",
+            "INFO": "White",
+            "SUCCESS": "Green",
+            "WARNING": "Yellow",
+            "ERROR": "Red",
+            "FATAL": "Magenta"
+        }
+    },
+
+    "SIEM": {
+        "Format": "ISO8601",
+        "TimestampFormat": "yyyy-MM-ddTHH:mm:ss.fffzzz",
+        "Encoding": "UTF8",
+        "Separator": " | "
+    }
+}

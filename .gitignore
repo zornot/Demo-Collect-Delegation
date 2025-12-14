@@ -1,0 +1,109 @@
+# ========================================
+# .gitignore pour projet PowerShell
+# ========================================
+
+# ========================================
+# CONFIGURATION LOCALE
+# ========================================
+Config/Settings.json
+.claude/settings.local.json
+
+# ========================================
+# SORTIES GENEREES
+# ========================================
+Output/
+!Output/.gitkeep
+Logs/
+!Logs/.gitkeep
+Reports/
+*.log
+
+# ========================================
+# TESTS
+# ========================================
+Tests/Coverage/
+TestResults/
+*.trx
+coverage.xml
+
+# ========================================
+# FICHIERS TEMPORAIRES
+# ========================================
+*.tmp
+*.temp
+~$*
+.temp/
+*.checkpoint.json
+nul
+
+# ========================================
+# IDE ET EDITEURS
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.user
+
+# ========================================
+# OS WINDOWS
+# ========================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ========================================
+# OS MACOS
+# ========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ========================================
+# POWERSHELL DEBUG
+# ========================================
+*.pdb
+*.TempPoint.ps1
+*.RestorePoint.ps1
+
+# ========================================
+# SECRETS ET CREDENTIALS
+# ========================================
+*.credentials
+*.secret
+*.key
+*.pfx
+*.pem
+*.cer
+appsettings.Development.json
+.env
+.env.*
+!.env.example
+
+# ========================================
+# SAUVEGARDES
+# ========================================
+*.bak
+*.backup
+*.old
+Backups/
+.backup/
+
+# ========================================
+# DEPENDANCES
+# ========================================
+node_modules/
+packages/
+
+# ========================================
+# CONSERVATION STRUCTURE (README.md)
+# ========================================
+!Output/.gitkeep
+!Logs/.gitkeep
+!Backups/.gitkeep
+!.temp/.gitkeep

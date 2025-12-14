@@ -1,0 +1,19 @@
+# Normalisation des fins de ligne
+* text=auto eol=lf
+
+# PowerShell
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+*.psd1 text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# JSON
+*.json text eol=lf
+
+# Binaires (ne pas toucher)
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
