@@ -19,11 +19,11 @@
     Chemin du dossier de sortie pour le fichier CSV.
     Defaut : Dossier Output/ du projet.
 .PARAMETER IncludeSharedMailbox
-    Inclure les mailboxes partagees dans la collecte.
-    Defaut : $true
+    Inclure les mailboxes partagees (SharedMailbox) dans la collecte.
+    Par defaut, seules les UserMailbox sont collectees.
 .PARAMETER IncludeRoomMailbox
-    Inclure les salles de reunion dans la collecte.
-    Defaut : $false
+    Inclure les salles de reunion (RoomMailbox) dans la collecte.
+    Par defaut, seules les UserMailbox sont collectees.
 .PARAMETER CleanupOrphans
     Supprimer les delegations orphelines (trustees supprimes).
     Par defaut en mode simulation (WhatIf). Utiliser -Force pour supprimer reellement.
@@ -77,10 +77,10 @@ param(
     [string]$OutputPath,
 
     [Parameter(Mandatory = $false)]
-    [switch]$IncludeSharedMailbox = $true,
+    [switch]$IncludeSharedMailbox,
 
     [Parameter(Mandatory = $false)]
-    [switch]$IncludeRoomMailbox = $false,
+    [switch]$IncludeRoomMailbox,
 
     [Parameter(Mandatory = $false)]
     [switch]$CleanupOrphans,
