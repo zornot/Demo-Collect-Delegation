@@ -519,13 +519,13 @@ foreach ($user in $allUsers) {
 ```
 
 ## CHECKLIST
-- [ ] Settings.example.json mis a jour
-- [ ] Module Checkpoint.psm1 cree
-- [ ] Get-ScriptConfiguration etendu (defaults)
-- [ ] Integration boucle principale
-- [ ] Finally block securite
-- [ ] Parametre -NoResume ajoute
-- [ ] Dossier Checkpoints dans .gitignore
+- [x] Settings.example.json mis a jour
+- [x] Module Checkpoint.psm1 cree
+- [x] Get-ScriptConfiguration etendu (defaults)
+- [x] Integration boucle principale
+- [x] Finally block securite
+- [x] Parametre -NoResume ajoute
+- [x] Dossier Checkpoints dans .gitignore
 - [ ] Tests manuels passes
 - [ ] Code review
 
@@ -537,9 +537,10 @@ Labels : feature moyenne checkpoint resume generique
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | DRAFT |
+| GitHub Issue | local |
+| Statut | RESOLVED |
 | Branche | feature/FEAT-009-checkpoint-resume |
+| Commit | 5ead0a8 |
 
 ---
 
