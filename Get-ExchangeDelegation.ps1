@@ -165,7 +165,7 @@ if (-not (Test-Path $OutputPath)) {
 }
 
 # Import modules projet
-Import-Module "$PSScriptRoot\Modules\Write-Log\Modules\Write-Log\Write-Log.psm1" -ErrorAction Stop
+Import-Module "$PSScriptRoot\Modules\Write-Log\Modules\Write-Log\Write-Log.psm1" -Force -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\ConsoleUI\Modules\ConsoleUI\ConsoleUI.psm1" -Force -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\EXOConnection\Modules\EXOConnection\EXOConnection.psm1" -ErrorAction Stop
 
@@ -729,7 +729,6 @@ try {
 
     # Collection des delegations
     Write-Status -Type Action -Message "Collecte des delegations..."
-    Write-Host ""
 
     $allDelegations = [System.Collections.Generic.List[PSCustomObject]]::new()
     $mailboxIndex = 0
