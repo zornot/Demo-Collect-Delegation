@@ -761,6 +761,11 @@ try {
     $checkpointEnabled = $script:Config.Checkpoint.Enabled -and -not $NoResume
     $checkpointState = $null
     $startIndex = 0
+    $isAppendMode = $false
+
+    # Generer le chemin CSV maintenant (pour le stocker dans le checkpoint)
+    $exportFileName = "ExchangeDelegations_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').csv"
+    $exportFilePath = Join-Path -Path $OutputPath -ChildPath $exportFileName
 
     if ($checkpointEnabled) {
         $sessionId = "ExchangeDelegations_$(Get-Date -Format 'yyyy-MM-dd')"
@@ -776,12 +781,32 @@ try {
             -Config $checkpointConfig `
             -SessionId $sessionId `
             -TotalItems $mailboxCount `
-            -CheckpointPath $checkpointPath
+            -CheckpointPath $checkpointPath `
+            -CsvPath $exportFilePath
 
         if ($checkpointState.IsResume) {
             Write-Status -Type Info -Message "Reprise checkpoint: $($checkpointState.ProcessedKeys.Count) mailboxes deja traitees" -Indent 1
             $startIndex = $checkpointState.StartIndex
+
+            # Utiliser le CSV existant si disponible
+            if (-not [string]::IsNullOrEmpty($checkpointState.CsvPath) -and (Test-Path $checkpointState.CsvPath)) {
+                $exportFilePath = $checkpointState.CsvPath
+                $isAppendMode = $true
+                Write-Status -Type Info -Message "CSV existant: $(Split-Path $exportFilePath -Leaf)" -Indent 1
+            }
         }
+    }
+
+    # Creer le CSV avec header si nouvelle collecte (pour que le checkpoint reference un fichier existant)
+    if (-not $isAppendMode) {
+        # Header CSV - doit correspondre aux proprietes de New-DelegationRecord
+        $csvHeader = @(
+            'MailboxEmail', 'MailboxDisplayName', 'TrusteeEmail', 'TrusteeDisplayName',
+            'DelegationType', 'AccessRights', 'FolderPath', 'IsOrphan',
+            'MailboxLastLogon', 'IsInactive', 'CollectedAt'
+        )
+        $csvHeader -join ',' | Set-Content -Path $exportFilePath -Encoding UTF8
+        Write-Log "CSV initialise: $exportFilePath" -Level DEBUG -NoConsole
     }
 
     # Boucle principale avec gestion checkpoint
@@ -885,9 +910,6 @@ try {
     # Export CSV
     Write-Status -Type Action -Message "Export CSV..."
 
-    $exportFileName = "ExchangeDelegations_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').csv"
-    $exportFilePath = Join-Path -Path $OutputPath -ChildPath $exportFileName
-
     if ($allDelegations.Count -gt 0) {
         # Filtrer si OrphansOnly
         $exportData = if ($OrphansOnly) {
@@ -899,10 +921,21 @@ try {
 
         # -WhatIf:$false : L'export CSV doit se faire meme en mode simulation
         # (WhatIf ne concerne que les suppressions de delegations orphelines)
-        $exportData | Export-Csv -Path $exportFilePath -NoTypeInformation -Encoding UTF8 -WhatIf:$false
-        Write-Status -Type Success -Message "Export: $exportFilePath" -Indent 1
+        if ($isAppendMode) {
+            # Mode append : ajouter sans header au CSV existant
+            $exportData | ConvertTo-Csv -NoTypeInformation |
+                Select-Object -Skip 1 |
+                Add-Content -Path $exportFilePath -Encoding UTF8
+            Write-Status -Type Success -Message "Append: $exportFilePath (+$($exportData.Count) lignes)" -Indent 1
+        }
+        else {
+            # Nouveau fichier avec header
+            $exportData | Export-Csv -Path $exportFilePath -NoTypeInformation -Encoding UTF8 -WhatIf:$false
+            Write-Status -Type Success -Message "Export: $exportFilePath" -Indent 1
+        }
         $filterNote = if ($OrphansOnly) { " (orphelins uniquement)" } else { "" }
-        Write-Log "Export CSV: $exportFilePath ($($exportData.Count) lignes$filterNote)" -Level SUCCESS
+        $modeNote = if ($isAppendMode) { " [append]" } else { "" }
+        Write-Log "Export CSV: $exportFilePath ($($exportData.Count) lignes$filterNote$modeNote)" -Level SUCCESS
     }
     else {
         Write-Status -Type Warning -Message "Aucune delegation trouvee - pas d'export" -Indent 1
