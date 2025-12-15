@@ -850,17 +850,18 @@ try {
 
     Write-Box -Title "RESUME" -Content $summaryContent
 
-    # Statistiques finales
-    Write-Host ""
-    Write-Host "  [i] Statistiques" -ForegroundColor Cyan
-    Write-Host "      Duree d'execution : $($executionTime.ToString('mm\:ss'))" -ForegroundColor White
+    # Statistiques finales avec Write-Box
+    $statsContent = [ordered]@{
+        'Duree'      = $executionTime.ToString('mm\:ss')
+    }
     if ($allDelegations.Count -gt 0 -and $exportFilePath) {
-        Write-Host "      Export CSV        : $exportFilePath" -ForegroundColor White
+        $statsContent['Export'] = $exportFilePath
     }
     if ($orphansInExport -gt 0) {
-        Write-Host "      Orphelins         : $orphansInExport delegation(s) a nettoyer" -ForegroundColor Yellow
+        $statsContent['Orphelins'] = "$orphansInExport delegation(s) a nettoyer"
     }
-    Write-Host ""
+
+    Write-Box -Title "STATISTIQUES" -Content $statsContent
 
     Write-Log "Collecte terminee - Total: $($allDelegations.Count) delegations - Duree: $($executionTime.ToString('mm\:ss'))" -Level SUCCESS
     Write-Status -Type Success -Message "Script termine avec succes"
