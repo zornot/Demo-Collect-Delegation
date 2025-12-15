@@ -172,10 +172,10 @@ Initialize-Log -Path $logPath
 
 # Log source de configuration
 if ($script:Config._source -eq "file") {
-    Write-Log "Configuration chargee depuis Config/Settings.json" -Level INFO
+    Write-Log "Configuration chargee depuis Config/Settings.json" -Level INFO -NoConsole
 }
 else {
-    Write-Log "Configuration par defaut (Settings.json absent)" -Level DEBUG
+    Write-Log "Configuration par defaut (Settings.json absent)" -Level DEBUG -NoConsole
 }
 
 # Forcer WhatIf si CleanupOrphans sans Force (securite par defaut)
@@ -299,11 +299,11 @@ function Resolve-TrusteeInfo {
 
         # Cas 1: Destinataire ambigu (plusieurs matches)
         if ($errorMessage -match 'ne représente pas un destinataire unique|doesn''t represent a unique recipient') {
-            Write-Log "Trustee ambigu (plusieurs destinataires): $Identity" -Level DEBUG
+            Write-Log "Trustee ambigu (plusieurs destinataires): $Identity" -Level DEBUG -NoConsole
         }
         # Cas 2: Destinataire introuvable
         elseif ($errorMessage -match 'introuvable|couldn''t be found|not found') {
-            Write-Log "Trustee introuvable: $Identity" -Level DEBUG
+            Write-Log "Trustee introuvable: $Identity" -Level DEBUG -NoConsole
         }
 
         # Retourner l'identite brute comme fallback
@@ -555,7 +555,7 @@ function Get-MailboxCalendarDelegation {
             Select-Object -First 1
 
         if (-not $calendarFolder) {
-            Write-Log "Calendrier non trouve pour $($Mailbox.PrimarySmtpAddress)" -Level DEBUG
+            Write-Log "Calendrier non trouve pour $($Mailbox.PrimarySmtpAddress)" -Level DEBUG -NoConsole
             return $delegationList
         }
 
@@ -579,7 +579,7 @@ function Get-MailboxCalendarDelegation {
             # Detecter si orphelin : SID (S-1-5-21-*) OU ADRecipient null (nom cache)
             $isOrphan = ($trusteeEmail -match '^S-1-5-21-') -or ($null -eq $permission.User.ADRecipient)
             if ($isOrphan -and $trusteeEmail -notmatch '^S-1-5-21-') {
-                Write-Log "Permission calendrier orpheline (nom cache): $trusteeDisplayName sur $($Mailbox.PrimarySmtpAddress)" -Level DEBUG
+                Write-Log "Permission calendrier orpheline (nom cache): $trusteeDisplayName sur $($Mailbox.PrimarySmtpAddress)" -Level DEBUG -NoConsole
             }
 
             $accessRightsList = $permission.AccessRights -join ', '
@@ -598,7 +598,7 @@ function Get-MailboxCalendarDelegation {
         }
     }
     catch {
-        Write-Log "Erreur Calendar sur $($Mailbox.PrimarySmtpAddress): $($_.Exception.Message)" -Level DEBUG
+        Write-Log "Erreur Calendar sur $($Mailbox.PrimarySmtpAddress): $($_.Exception.Message)" -Level DEBUG -NoConsole
     }
 
     return $delegationList
@@ -698,7 +698,7 @@ try {
         }
     }
 
-    Write-Log "Demarrage collecte des delegations Exchange Online" -Level INFO
+    Write-Log "Demarrage collecte des delegations Exchange Online" -Level INFO -NoConsole
 
     # Connexion Exchange Online (avec reutilisation session existante)
     $connected = Connect-EXOConnection
@@ -708,7 +708,7 @@ try {
     }
 
     $exoInfo = Get-EXOConnectionInfo
-    Write-Log "Connexion Exchange Online: $($exoInfo.Organization)" -Level INFO
+    Write-Log "Connexion Exchange Online: $($exoInfo.Organization)" -Level INFO -NoConsole
 
     # Construction du filtre de type de mailbox
     Write-Status -Type Action -Message "Recuperation des mailboxes..."
@@ -724,7 +724,7 @@ try {
     $mailboxCount = $allMailboxes.Count
 
     Write-Status -Type Success -Message "$mailboxCount mailboxes trouvees" -Indent 1
-    Write-Log "Mailboxes recuperees: $mailboxCount" -Level INFO
+    Write-Log "Mailboxes recuperees: $mailboxCount" -Level INFO -NoConsole
 
     if ($mailboxCount -eq 0) {
         Write-Status -Type Warning -Message "Aucune mailbox a traiter"
@@ -928,7 +928,7 @@ try {
 catch {
     Write-Status -Type Error -Message "Erreur fatale: $($_.Exception.Message)"
     Write-Log "Erreur fatale: $($_.Exception.Message)" -Level FATAL
-    Write-Log "StackTrace: $($_.ScriptStackTrace)" -Level DEBUG
+    Write-Log "StackTrace: $($_.ScriptStackTrace)" -Level DEBUG -NoConsole
     exit 1
 }
 finally {
