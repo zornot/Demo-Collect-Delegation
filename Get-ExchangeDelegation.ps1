@@ -836,12 +836,21 @@ try {
         Write-Log "CSV existant: $existingDelegationCount delegations pre-existantes" -Level DEBUG -NoConsole
     }
 
+    # Verification coherence: si checkpoint dit "X traites" mais CSV a 0 lignes
+    # C'est un checkpoint corrompu (interruption avant toute ecriture) - on repart de 0
+    if ($checkpointState.IsResume -and $existingDelegationCount -eq 0) {
+        Write-Log "Checkpoint incoherent (0 delegations dans CSV) - redemarrage complet" -Level WARNING
+        Write-Status -Type Warning -Message "Checkpoint invalide - redemarrage depuis index 0" -Indent 1
+        $startIndex = 0
+        $checkpointState.StartIndex = 0
+        $checkpointState.ProcessedKeys.Clear()
+    }
+
     # Boucle principale avec gestion checkpoint
-    $currentIndex = $startIndex
+    $lastCompletedIndex = $startIndex - 1  # Aucune mailbox completee au debut
     try {
         for ($i = $startIndex; $i -lt $mailboxCount; $i++) {
             $mailbox = $allMailboxes[$i]
-            $currentIndex = $i
 
             # Skip si deja traite (checkpoint)
             if ($checkpointState -and (Test-AlreadyProcessed -InputObject $mailbox)) {
@@ -947,6 +956,9 @@ try {
             if ($checkpointState) {
                 Add-ProcessedItem -InputObject $mailbox -Index $i
             }
+
+            # Cette mailbox est maintenant completee
+            $lastCompletedIndex = $i
         }
 
         # Collecte terminee avec succes - supprimer checkpoint
@@ -956,10 +968,15 @@ try {
         }
     }
     finally {
-        # Checkpoint de securite si interruption (verifier etat module actuel)
-        if ((Get-CheckpointState) -and $currentIndex -lt $mailboxCount) {
-            Save-CheckpointAtomic -LastProcessedIndex $currentIndex -Force
-            Write-Status -Type Warning -Message "Interruption - checkpoint sauvegarde (index $currentIndex)" -Indent 1
+        # Checkpoint de securite si interruption
+        # Sauvegarder UNIQUEMENT si au moins une mailbox a ete completee
+        if ((Get-CheckpointState) -and $lastCompletedIndex -ge $startIndex) {
+            Save-CheckpointAtomic -LastProcessedIndex $lastCompletedIndex -Force
+            Write-Status -Type Warning -Message "Interruption - checkpoint sauvegarde (index $lastCompletedIndex)" -Indent 1
+        }
+        elseif ((Get-CheckpointState) -and $lastCompletedIndex -lt $startIndex) {
+            # Aucune mailbox completee - ne pas sauvegarder de checkpoint invalide
+            Write-Status -Type Warning -Message "Interruption - aucune mailbox completee, pas de checkpoint" -Indent 1
         }
     }
 
