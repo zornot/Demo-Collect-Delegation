@@ -77,7 +77,8 @@ function Get-CallerScriptName {
 
     $filter = if ($ExcludeCurrentScript) {
         { $_.ScriptName -and $_.ScriptName -ne $PSCommandPath }
-    } else {
+    }
+    else {
         { $_.ScriptName }
     }
 
@@ -174,17 +175,21 @@ function Write-Log {
 
     # Couleur selon le niveau (correspondance RFC 5424)
     $color = switch ($Level) {
-        "DEBUG"   { "Gray" }      # Severity 7
-        "INFO"    { "White" }     # Severity 6
+        "DEBUG" { "Gray" }      # Severity 7
+        "INFO" { "White" }     # Severity 6
         "SUCCESS" { "Green" }     # Severity 5 (Notice)
         "WARNING" { "Yellow" }    # Severity 4
-        "ERROR"   { "Red" }       # Severity 3
-        "FATAL"   { "Magenta" }   # Severity 0-2
-        default   { "White" }
+        "ERROR" { "Red" }       # Severity 3
+        "FATAL" { "Magenta" }   # Severity 0-2
+        default { "White" }
     }
 
     # Affichage console
     if (-not $NoConsole) {
+        # Saut de ligne avant WARNING/ERROR/FATAL pour ne pas couper la progression
+        if ($Level -in @('WARNING', 'ERROR', 'FATAL')) {
+            Write-Host ""
+        }
         Write-Host $logEntry -ForegroundColor $color
     }
 
@@ -198,7 +203,8 @@ function Write-Log {
             }
             # UTF-8 encoding sans BOM pour compatibilite SIEM
             Add-Content -Path $LogFile -Value $logEntry -Encoding UTF8 -ErrorAction Stop
-        } catch {
+        }
+        catch {
             Write-Host "[!] Impossible d'ecrire dans le log : $_" -ForegroundColor Red
         }
     }
