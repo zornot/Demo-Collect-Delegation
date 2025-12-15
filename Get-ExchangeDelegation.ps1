@@ -601,6 +601,9 @@ function Get-MailboxForwardingDelegation {
 #region Main
 
 try {
+    # Demarrer le chronometre
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
     Write-ConsoleBanner -Title "COLLECT EXCHANGE DELEGATIONS" -Version $script:Version
 
     # Afficher le mode d'execution apres la banniere
@@ -822,6 +825,13 @@ try {
         }
     }
 
+    # Arreter le chronometre
+    $stopwatch.Stop()
+    $executionTime = $stopwatch.Elapsed
+
+    # Compter les orphelins dans l'export
+    $orphansInExport = @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count
+
     # Resume final avec Write-Box du module ConsoleUI
     $summaryContent = [ordered]@{
         'Mailboxes'    = $mailboxCount
@@ -831,15 +841,28 @@ try {
         'Calendar'     = $statsPerType.Calendar
         'Forwarding'   = $statsPerType.Forwarding
         'TOTAL'        = $allDelegations.Count
+        'Orphelins'    = $orphansInExport
     }
 
     if ($CleanupOrphans -and $orphanCount -gt 0) {
-        $summaryContent['Orphelins'] = "$cleanedCount/$orphanCount supprimes"
+        $summaryContent['Nettoyes'] = "$cleanedCount/$orphanCount supprimes"
     }
 
     Write-Box -Title "RESUME" -Content $summaryContent
 
-    Write-Log "Collecte terminee - Total: $($allDelegations.Count) delegations" -Level SUCCESS
+    # Statistiques finales
+    Write-Host ""
+    Write-Host "  [i] Statistiques" -ForegroundColor Cyan
+    Write-Host "      Duree d'execution : $($executionTime.ToString('mm\:ss'))" -ForegroundColor White
+    if ($allDelegations.Count -gt 0 -and $exportFilePath) {
+        Write-Host "      Export CSV        : $exportFilePath" -ForegroundColor White
+    }
+    if ($orphansInExport -gt 0) {
+        Write-Host "      Orphelins         : $orphansInExport delegation(s) a nettoyer" -ForegroundColor Yellow
+    }
+    Write-Host ""
+
+    Write-Log "Collecte terminee - Total: $($allDelegations.Count) delegations - Duree: $($executionTime.ToString('mm\:ss'))" -Level SUCCESS
     Write-Status -Type Success -Message "Script termine avec succes"
 
     exit 0
