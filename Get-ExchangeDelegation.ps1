@@ -933,7 +933,7 @@ catch {
 }
 finally {
     # Rotation des logs
-    Invoke-LogRotation -Path "$PSScriptRoot\Logs" -RetentionDays 30 -ErrorAction SilentlyContinue
+    Invoke-LogRotation -Path $logPath -RetentionDays $script:Config.Retention.LogDays -ErrorAction SilentlyContinue
 }
 
 #endregion Main
