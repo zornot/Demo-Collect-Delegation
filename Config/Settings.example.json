@@ -1,6 +1,6 @@
 {
     "_comment": "Copier vers Settings.json et adapter les valeurs selon environnement",
-    "_version": "1.0.0",
+    "_version": "1.1.0",
 
     "Application": {
         "Name": "Get-ExchangeDelegation",
@@ -10,11 +10,19 @@
 
     "Paths": {
         "Logs": "./Logs",
-        "Output": "./Output"
+        "Output": "./Output",
+        "Checkpoints": "./Checkpoints"
     },
 
     "Retention": {
         "LogDays": 30,
-        "OutputDays": 7
+        "OutputDays": 7,
+        "CheckpointHours": 24
+    },
+
+    "Checkpoint": {
+        "Enabled": true,
+        "Interval": 50,
+        "KeyProperty": "ExchangeGuid"
     }
 }

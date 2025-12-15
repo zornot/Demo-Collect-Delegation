@@ -36,6 +36,9 @@
 .PARAMETER Force
     Force la suppression reelle des delegations orphelines.
     Sans ce parametre, -CleanupOrphans fonctionne en mode simulation.
+.PARAMETER NoResume
+    Force une nouvelle collecte en ignorant tout checkpoint existant.
+    Par defaut, le script reprend automatiquement depuis le dernier checkpoint valide.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1
     Collecte toutes les delegations et exporte dans Output/.
@@ -54,6 +57,9 @@
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -IncludeLastLogon
     Collecte avec la date de derniere connexion de chaque mailbox.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -NoResume
+    Force une nouvelle collecte en ignorant tout checkpoint existant.
 .NOTES
     Author: zornot
     Date: 2025-12-15
@@ -89,7 +95,10 @@ param(
     [switch]$IncludeInactive,
 
     [Parameter(Mandatory = $false)]
-    [switch]$Force
+    [switch]$Force,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$NoResume
 )
 
 #region Configuration
@@ -119,12 +128,19 @@ function Get-ScriptConfiguration {
             LogLevel    = "Info"
         }
         Paths       = @{
-            Logs   = "./Logs"
-            Output = "./Output"
+            Logs        = "./Logs"
+            Output      = "./Output"
+            Checkpoints = "./Checkpoints"
         }
         Retention   = @{
-            LogDays    = 30
-            OutputDays = 7
+            LogDays         = 30
+            OutputDays      = 7
+            CheckpointHours = 24
+        }
+        Checkpoint  = @{
+            Enabled     = $true
+            Interval    = 50
+            KeyProperty = "ExchangeGuid"
         }
         _source     = "default"
     }
@@ -168,6 +184,7 @@ if (-not (Test-Path $OutputPath)) {
 Import-Module "$PSScriptRoot\Modules\Write-Log\Modules\Write-Log\Write-Log.psm1" -Force -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\ConsoleUI\Modules\ConsoleUI\ConsoleUI.psm1" -Force -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\EXOConnection\Modules\EXOConnection\EXOConnection.psm1" -ErrorAction Stop
+Import-Module "$PSScriptRoot\Modules\Checkpoint\Modules\Checkpoint\Checkpoint.psm1" -Force -ErrorAction Stop
 
 # Initialiser logs avec chemin depuis config
 $logPath = Join-Path $PSScriptRoot $script:Config.Paths.Logs
@@ -731,7 +748,6 @@ try {
     Write-Status -Type Action -Message "Collecte des delegations..."
 
     $allDelegations = [System.Collections.Generic.List[PSCustomObject]]::new()
-    $mailboxIndex = 0
 
     $statsPerType = @{
         FullAccess   = 0
@@ -741,74 +757,129 @@ try {
         Forwarding   = 0
     }
 
-    foreach ($mailbox in $allMailboxes) {
-        $mailboxIndex++
+    # Initialisation checkpoint si active
+    $checkpointEnabled = $script:Config.Checkpoint.Enabled -and -not $NoResume
+    $checkpointState = $null
+    $startIndex = 0
 
-        # Progression tous les 10 elements ou a la fin
-        if ($mailboxIndex % 10 -eq 0 -or $mailboxIndex -eq $mailboxCount) {
-            $percent = [math]::Round(($mailboxIndex / $mailboxCount) * 100)
-            Write-Status -Type Action -Message "Analyse mailboxes : $mailboxIndex/$mailboxCount ($percent%)" -Indent 1
+    if ($checkpointEnabled) {
+        $sessionId = "ExchangeDelegations_$(Get-Date -Format 'yyyy-MM-dd')"
+        $checkpointPath = Join-Path $PSScriptRoot $script:Config.Paths.Checkpoints
+
+        # Ajouter MaxAgeHours depuis Retention si present
+        $checkpointConfig = $script:Config.Checkpoint.Clone()
+        if ($script:Config.Retention.ContainsKey('CheckpointHours')) {
+            $checkpointConfig.MaxAgeHours = $script:Config.Retention.CheckpointHours
         }
 
-        # Collecter LastLogon si demande
-        $mailboxLastLogon = ''
-        if ($IncludeLastLogon) {
-            $stats = Get-MailboxStatistics -Identity $mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue
-            if ($stats -and $stats.LastLogonTime) {
-                $mailboxLastLogon = $stats.LastLogonTime.ToString('dd/MM/yyyy')
-            }
-        }
+        $checkpointState = Initialize-Checkpoint `
+            -Config $checkpointConfig `
+            -SessionId $sessionId `
+            -TotalItems $mailboxCount `
+            -CheckpointPath $checkpointPath
 
-        # Verifier si mailbox inactive
-        $isInactive = $mailbox.ExchangeObjectId -in $script:InactiveMailboxIds
-
-        # FullAccess
-        $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
-        $statsPerType.FullAccess += $fullAccessDelegations.Count
-        foreach ($delegation in $fullAccessDelegations) {
-            $delegation.MailboxLastLogon = $mailboxLastLogon
-            $delegation.IsInactive = $isInactive
-            $allDelegations.Add($delegation)
-        }
-
-        # SendAs
-        $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox
-        $statsPerType.SendAs += $sendAsDelegations.Count
-        foreach ($delegation in $sendAsDelegations) {
-            $delegation.MailboxLastLogon = $mailboxLastLogon
-            $delegation.IsInactive = $isInactive
-            $allDelegations.Add($delegation)
-        }
-
-        # SendOnBehalf
-        $sendOnBehalfDelegations = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
-        $statsPerType.SendOnBehalf += $sendOnBehalfDelegations.Count
-        foreach ($delegation in $sendOnBehalfDelegations) {
-            $delegation.MailboxLastLogon = $mailboxLastLogon
-            $delegation.IsInactive = $isInactive
-            $allDelegations.Add($delegation)
-        }
-
-        # Calendar
-        $calendarDelegations = Get-MailboxCalendarDelegation -Mailbox $mailbox
-        $statsPerType.Calendar += $calendarDelegations.Count
-        foreach ($delegation in $calendarDelegations) {
-            $delegation.MailboxLastLogon = $mailboxLastLogon
-            $delegation.IsInactive = $isInactive
-            $allDelegations.Add($delegation)
-        }
-
-        # Forwarding
-        $forwardingDelegations = Get-MailboxForwardingDelegation -Mailbox $mailbox
-        $statsPerType.Forwarding += $forwardingDelegations.Count
-        foreach ($delegation in $forwardingDelegations) {
-            $delegation.MailboxLastLogon = $mailboxLastLogon
-            $delegation.IsInactive = $isInactive
-            $allDelegations.Add($delegation)
+        if ($checkpointState.IsResume) {
+            Write-Status -Type Info -Message "Reprise checkpoint: $($checkpointState.ProcessedKeys.Count) mailboxes deja traitees" -Indent 1
+            $startIndex = $checkpointState.StartIndex
         }
     }
 
-    Write-Host ""  # Nouvelle ligne apres la progression
+    # Boucle principale avec gestion checkpoint
+    $currentIndex = $startIndex
+    try {
+        for ($i = $startIndex; $i -lt $mailboxCount; $i++) {
+            $mailbox = $allMailboxes[$i]
+            $currentIndex = $i
+
+            # Skip si deja traite (checkpoint)
+            if ($checkpointState -and (Test-AlreadyProcessed -InputObject $mailbox)) {
+                continue
+            }
+
+            # Progression tous les 10 elements ou a la fin
+            $displayIndex = $i + 1
+            if ($displayIndex % 10 -eq 0 -or $displayIndex -eq $mailboxCount) {
+                $percent = [math]::Round(($displayIndex / $mailboxCount) * 100)
+                Write-Status -Type Action -Message "Analyse mailboxes : $displayIndex/$mailboxCount ($percent%)" -Indent 1
+            }
+
+            # Collecter LastLogon si demande
+            $mailboxLastLogon = ''
+            if ($IncludeLastLogon) {
+                $stats = Get-MailboxStatistics -Identity $mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue
+                if ($stats -and $stats.LastLogonTime) {
+                    $mailboxLastLogon = $stats.LastLogonTime.ToString('dd/MM/yyyy')
+                }
+            }
+
+            # Verifier si mailbox inactive
+            $isInactive = $mailbox.ExchangeObjectId -in $script:InactiveMailboxIds
+
+            # FullAccess
+            $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
+            $statsPerType.FullAccess += $fullAccessDelegations.Count
+            foreach ($delegation in $fullAccessDelegations) {
+                $delegation.MailboxLastLogon = $mailboxLastLogon
+                $delegation.IsInactive = $isInactive
+                $allDelegations.Add($delegation)
+            }
+
+            # SendAs
+            $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox
+            $statsPerType.SendAs += $sendAsDelegations.Count
+            foreach ($delegation in $sendAsDelegations) {
+                $delegation.MailboxLastLogon = $mailboxLastLogon
+                $delegation.IsInactive = $isInactive
+                $allDelegations.Add($delegation)
+            }
+
+            # SendOnBehalf
+            $sendOnBehalfDelegations = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
+            $statsPerType.SendOnBehalf += $sendOnBehalfDelegations.Count
+            foreach ($delegation in $sendOnBehalfDelegations) {
+                $delegation.MailboxLastLogon = $mailboxLastLogon
+                $delegation.IsInactive = $isInactive
+                $allDelegations.Add($delegation)
+            }
+
+            # Calendar
+            $calendarDelegations = Get-MailboxCalendarDelegation -Mailbox $mailbox
+            $statsPerType.Calendar += $calendarDelegations.Count
+            foreach ($delegation in $calendarDelegations) {
+                $delegation.MailboxLastLogon = $mailboxLastLogon
+                $delegation.IsInactive = $isInactive
+                $allDelegations.Add($delegation)
+            }
+
+            # Forwarding
+            $forwardingDelegations = Get-MailboxForwardingDelegation -Mailbox $mailbox
+            $statsPerType.Forwarding += $forwardingDelegations.Count
+            foreach ($delegation in $forwardingDelegations) {
+                $delegation.MailboxLastLogon = $mailboxLastLogon
+                $delegation.IsInactive = $isInactive
+                $allDelegations.Add($delegation)
+            }
+
+            # Marquer comme traite + checkpoint periodique
+            if ($checkpointState) {
+                Add-ProcessedItem -InputObject $mailbox -Index $i
+            }
+        }
+
+        # Collecte terminee avec succes - supprimer checkpoint
+        if ($checkpointState) {
+            Complete-Checkpoint
+            Write-Log "Checkpoint supprime (collecte terminee)" -Level DEBUG -NoConsole
+        }
+    }
+    finally {
+        # Checkpoint de securite si interruption
+        if ($checkpointState -and $currentIndex -lt ($mailboxCount - 1)) {
+            Save-CheckpointAtomic -LastProcessedIndex $currentIndex -Force
+            Write-Status -Type Warning -Message "Interruption - checkpoint sauvegarde (index $currentIndex)" -Indent 1
+        }
+    }
+
     Write-Status -Type Success -Message "Collecte terminee: $($allDelegations.Count) delegations" -Indent 1
 
     # Export CSV
@@ -911,7 +982,7 @@ try {
 
     # Statistiques finales avec Write-Box
     $statsContent = [ordered]@{
-        'Duree'      = $executionTime.ToString('mm\:ss')
+        'Duree' = $executionTime.ToString('mm\:ss')
     }
     if ($allDelegations.Count -gt 0 -and $exportFilePath) {
         $statsContent['Export'] = $exportFilePath
