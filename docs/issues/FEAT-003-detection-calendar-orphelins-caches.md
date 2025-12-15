@@ -85,10 +85,10 @@ Fichier : Get-ExchangeDelegation.ps1:L453-512
 Ajouter detection orphelin dans la boucle foreach des permissions :
 
 ```powershell
-# Detecter si orphelin (ADRecipient null = compte supprime mais nom cache)
-$isOrphan = $null -eq $permission.User.ADRecipient -and $trusteeIdentity -notmatch '^S-1-5-21-'
-if ($isOrphan) {
-    Write-Log "Permission calendrier orpheline (nom cache): $trusteeIdentity sur $($Mailbox.PrimarySmtpAddress)" -Level DEBUG
+# Detecter si orphelin : SID (S-1-5-21-*) OU ADRecipient null (nom cache)
+$isOrphan = ($trusteeEmail -match '^S-1-5-21-') -or ($null -eq $permission.User.ADRecipient)
+if ($isOrphan -and $trusteeEmail -notmatch '^S-1-5-21-') {
+    Write-Log "Permission calendrier orpheline (nom cache): $trusteeDisplayName sur $($Mailbox.PrimarySmtpAddress)" -Level DEBUG
 }
 
 $delegationRecord = New-DelegationRecord `
@@ -169,5 +169,5 @@ Labels : feat moyenne calendar orphan
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # |
-| Statut | CLOSED |
+| Statut | CLOSED (amended) |
 | Branche | feature/FEAT-003-calendar-orphelins-caches |
