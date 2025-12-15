@@ -323,7 +323,8 @@ function New-DelegationRecord {
         [string]$TrusteeDisplayName,
         [string]$DelegationType,
         [string]$AccessRights,
-        [string]$FolderPath = ''
+        [string]$FolderPath = '',
+        [bool]$IsOrphan = $false
     )
 
     [PSCustomObject]@{
@@ -334,6 +335,7 @@ function New-DelegationRecord {
         DelegationType     = $DelegationType
         AccessRights       = $AccessRights
         FolderPath         = $FolderPath
+        IsOrphan           = $IsOrphan
         CollectedAt        = $script:CollectionTimestamp
     }
 }
@@ -490,6 +492,12 @@ function Get-MailboxCalendarDelegation {
             # Exclure si c'est un compte systeme
             if (Test-IsSystemAccount -Identity $trusteeEmail) { continue }
 
+            # Detecter si orphelin (ADRecipient null = compte supprime mais nom cache)
+            $isOrphan = ($null -eq $permission.User.ADRecipient) -and ($trusteeEmail -notmatch '^S-1-5-21-')
+            if ($isOrphan) {
+                Write-Log "Permission calendrier orpheline (nom cache): $trusteeDisplayName sur $($Mailbox.PrimarySmtpAddress)" -Level DEBUG
+            }
+
             $accessRightsList = $permission.AccessRights -join ', '
 
             $delegationRecord = New-DelegationRecord `
@@ -499,7 +507,8 @@ function Get-MailboxCalendarDelegation {
                 -TrusteeDisplayName $trusteeDisplayName `
                 -DelegationType 'Calendar' `
                 -AccessRights $accessRightsList `
-                -FolderPath $folderName
+                -FolderPath $folderName `
+                -IsOrphan $isOrphan
 
             $delegationList.Add($delegationRecord)
         }
@@ -712,9 +721,16 @@ try {
     $cleanedCount = 0
 
     if ($CleanupOrphans) {
-        # Identifier les orphelins (SID S-1-5-21-*)
-        $orphanedDelegations = $allDelegations | Where-Object { $_.TrusteeEmail -match '^S-1-5-21' }
+        # Identifier les orphelins : SID (S-1-5-21-*) OU noms caches (IsOrphan = $true)
+        $orphanedDelegations = $allDelegations | Where-Object {
+            ($_.TrusteeEmail -match '^S-1-5-21-') -or ($_.IsOrphan -eq $true)
+        }
         $orphanCount = $orphanedDelegations.Count
+
+        # Stats detaillees pour le log
+        $sidOrphans = @($orphanedDelegations | Where-Object { $_.TrusteeEmail -match '^S-1-5-21-' }).Count
+        $cachedOrphans = @($orphanedDelegations | Where-Object { $_.IsOrphan -and $_.TrusteeEmail -notmatch '^S-1-5-21-' }).Count
+        Write-Log "Orphelins detectes: $orphanCount total (SID: $sidOrphans, Noms caches: $cachedOrphans)" -Level INFO
 
         if ($orphanCount -gt 0) {
             Write-Host ""
