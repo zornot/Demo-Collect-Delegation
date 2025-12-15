@@ -184,6 +184,6 @@ Labels : feat moyenne delegation orphan
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # |
-| Statut | CLOSED (amended) |
+| GitHub Issue | #6 |
+| Statut | CLOSED |
 | Branche | feature/FEAT-003-calendar-orphelins-caches |

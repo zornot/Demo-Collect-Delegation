@@ -139,6 +139,6 @@ Labels : feat faible export filter
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # |
+| GitHub Issue | #7 |
 | Statut | CLOSED |
 | Branche | feature/FEAT-004-export-orphelins-uniquement |
