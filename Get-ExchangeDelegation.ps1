@@ -266,7 +266,7 @@ function Remove-OrphanedDelegation {
                         -ErrorAction Stop
                 }
                 'Calendar' {
-                    $calendarPath = "$mailbox:\Calendar"
+                    $calendarPath = "${mailbox}:\Calendar"
                     Remove-MailboxFolderPermission -Identity $calendarPath `
                         -User $trustee -Confirm:$false -ErrorAction Stop
                 }
