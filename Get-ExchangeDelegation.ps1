@@ -734,6 +734,10 @@ try {
         Write-Status -Type Success -Message "$($inactiveMailboxes.Count) mailboxes inactives ajoutees" -Indent 1
     }
 
+    # Tri stable par PrimarySmtpAddress pour garantir un ordre coherent entre les runs
+    # (requis pour le checkpoint: StartIndex doit pointer vers la meme mailbox)
+    $allMailboxes = $allMailboxes | Sort-Object -Property PrimarySmtpAddress
+
     $mailboxCount = $allMailboxes.Count
     Write-Status -Type Success -Message "$mailboxCount mailboxes au total" -Indent 1
     Write-Log "Mailboxes recuperees: $mailboxCount" -Level INFO -NoConsole
@@ -803,7 +807,7 @@ try {
         $csvHeader = @(
             'MailboxEmail', 'MailboxDisplayName', 'TrusteeEmail', 'TrusteeDisplayName',
             'DelegationType', 'AccessRights', 'FolderPath', 'IsOrphan',
-            'MailboxLastLogon', 'IsInactive', 'CollectedAt'
+            'IsInactive', 'MailboxLastLogon', 'CollectedAt'
         )
         $csvHeader -join ',' | Set-Content -Path $exportFilePath -Encoding UTF8
         Write-Log "CSV initialise: $exportFilePath" -Level DEBUG -NoConsole

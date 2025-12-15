@@ -21,6 +21,7 @@
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-005 | Header CSV inverse + tri checkpoint | 2025-12-15 | local |
 | BUG-004 | Variable locale vs etat module | 2025-12-15 | #16 |
 | BUG-003 | Condition finally trop restrictive | 2025-12-15 | #15 |
 | BUG-002 | CsvPath non restaure depuis checkpoint | 2025-12-15 | #14 |
