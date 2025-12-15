@@ -696,7 +696,9 @@ try {
     $exportFilePath = Join-Path -Path $OutputPath -ChildPath $exportFileName
 
     if ($allDelegations.Count -gt 0) {
-        $allDelegations | Export-Csv -Path $exportFilePath -NoTypeInformation -Encoding UTF8
+        # -WhatIf:$false : L'export CSV doit se faire meme en mode simulation
+        # (WhatIf ne concerne que les suppressions de delegations orphelines)
+        $allDelegations | Export-Csv -Path $exportFilePath -NoTypeInformation -Encoding UTF8 -WhatIf:$false
         Write-Status -Type Success -Message "Export: $exportFilePath" -Indent 1
         Write-Log "Export CSV: $exportFilePath ($($allDelegations.Count) lignes)" -Level SUCCESS
     }
