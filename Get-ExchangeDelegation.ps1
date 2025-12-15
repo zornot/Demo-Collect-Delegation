@@ -701,7 +701,7 @@ try {
         if ($IncludeLastLogon) {
             $stats = Get-MailboxStatistics -Identity $mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue
             if ($stats -and $stats.LastLogonTime) {
-                $mailboxLastLogon = $stats.LastLogonTime.ToString('o')
+                $mailboxLastLogon = $stats.LastLogonTime.ToString('dd/MM/yyyy')
             }
         }
 
