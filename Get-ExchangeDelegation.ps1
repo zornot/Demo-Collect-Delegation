@@ -921,8 +921,8 @@ try {
         }
     }
     finally {
-        # Checkpoint de securite si interruption
-        if ($checkpointState -and $currentIndex -lt ($mailboxCount - 1)) {
+        # Checkpoint de securite si interruption (verifier etat module actuel)
+        if ((Get-CheckpointState) -and $currentIndex -lt $mailboxCount) {
             Save-CheckpointAtomic -LastProcessedIndex $currentIndex -Force
             Write-Status -Type Warning -Message "Interruption - checkpoint sauvegarde (index $currentIndex)" -Indent 1
         }

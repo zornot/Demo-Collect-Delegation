@@ -82,9 +82,9 @@ Note : Ce fix integre aussi la correction de BUG-003 (condition `< $mailboxCount
 
 ## CHECKLIST
 
-- [ ] Code AVANT = code reel verifie
+- [x] Code AVANT = code reel verifie
 - [ ] Tests manuels passes
-- [ ] Code review
+- [x] Code review
 
 Labels : bug faible checkpoint
 
@@ -94,9 +94,11 @@ Labels : bug faible checkpoint
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | DRAFT |
-| Branche | fix/BUG-004-checkpoint-local-vs-module-state |
+| GitHub Issue | # (apres sync) |
+| Statut | RESOLVED |
+| Branche | fix/BUG-003-004-finally-checkpoint |
+| Commit | (apres merge) |
+| Note | Combine avec BUG-003 |
 
 ---
 

@@ -73,9 +73,9 @@ if ($checkpointState -and $currentIndex -lt $mailboxCount) {
 
 ## CHECKLIST
 
-- [ ] Code AVANT = code reel verifie
+- [x] Code AVANT = code reel verifie
 - [ ] Tests manuels passes
-- [ ] Code review
+- [x] Code review
 
 Labels : bug moyenne checkpoint
 
@@ -85,9 +85,11 @@ Labels : bug moyenne checkpoint
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | DRAFT |
-| Branche | fix/BUG-003-finally-condition-lastindex |
+| GitHub Issue | # (apres sync) |
+| Statut | RESOLVED |
+| Branche | fix/BUG-003-004-finally-checkpoint |
+| Commit | (apres merge) |
+| Note | Combine avec BUG-004 |
 
 ---
 
