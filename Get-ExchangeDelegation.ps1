@@ -661,29 +661,29 @@ try {
         }
 
         # FullAccess
-        $fullAccessDelegations = @(Get-MailboxFullAccessDelegation -Mailbox $mailbox)
+        $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
         $statsPerType.FullAccess += $fullAccessDelegations.Count
-        $allDelegations.AddRange($fullAccessDelegations)
+        foreach ($delegation in $fullAccessDelegations) { $allDelegations.Add($delegation) }
 
         # SendAs
-        $sendAsDelegations = @(Get-MailboxSendAsDelegation -Mailbox $mailbox)
+        $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox
         $statsPerType.SendAs += $sendAsDelegations.Count
-        $allDelegations.AddRange($sendAsDelegations)
+        foreach ($delegation in $sendAsDelegations) { $allDelegations.Add($delegation) }
 
         # SendOnBehalf
-        $sendOnBehalfDelegations = @(Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox)
+        $sendOnBehalfDelegations = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
         $statsPerType.SendOnBehalf += $sendOnBehalfDelegations.Count
-        $allDelegations.AddRange($sendOnBehalfDelegations)
+        foreach ($delegation in $sendOnBehalfDelegations) { $allDelegations.Add($delegation) }
 
         # Calendar
-        $calendarDelegations = @(Get-MailboxCalendarDelegation -Mailbox $mailbox)
+        $calendarDelegations = Get-MailboxCalendarDelegation -Mailbox $mailbox
         $statsPerType.Calendar += $calendarDelegations.Count
-        $allDelegations.AddRange($calendarDelegations)
+        foreach ($delegation in $calendarDelegations) { $allDelegations.Add($delegation) }
 
         # Forwarding
-        $forwardingDelegations = @(Get-MailboxForwardingDelegation -Mailbox $mailbox)
+        $forwardingDelegations = Get-MailboxForwardingDelegation -Mailbox $mailbox
         $statsPerType.Forwarding += $forwardingDelegations.Count
-        $allDelegations.AddRange($forwardingDelegations)
+        foreach ($delegation in $forwardingDelegations) { $allDelegations.Add($delegation) }
     }
 
     Write-Host ""  # Nouvelle ligne apres la progression
