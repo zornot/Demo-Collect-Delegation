@@ -264,5 +264,5 @@ Labels : performance optimization exchange-online
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # (apres gh issue create) |
-| Statut | DRAFT |
+| Statut | RESOLVED |
 | Branche | feature/PERF-001-optimisation-cmdlets-exchange |
