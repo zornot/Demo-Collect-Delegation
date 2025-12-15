@@ -791,8 +791,8 @@ try {
             -CsvPath $exportFilePath
 
         if ($checkpointState.IsResume) {
-            Write-Status -Type Info -Message "Reprise checkpoint: $($checkpointState.ProcessedKeys.Count) mailboxes deja traitees" -Indent 1
             $startIndex = $checkpointState.StartIndex
+            Write-Status -Type Info -Message "Reprise checkpoint: $($checkpointState.ProcessedKeys.Count) mailboxes deja traitees, reprise a mailbox $($startIndex + 1)/$mailboxCount" -Indent 1
 
             # Utiliser le CSV existant si disponible
             if (-not [string]::IsNullOrEmpty($checkpointState.CsvPath) -and (Test-Path $checkpointState.CsvPath)) {
@@ -972,7 +972,8 @@ try {
         # Sauvegarder UNIQUEMENT si au moins une mailbox a ete completee
         if ((Get-CheckpointState) -and $lastCompletedIndex -ge $startIndex) {
             Save-CheckpointAtomic -LastProcessedIndex $lastCompletedIndex -Force
-            Write-Status -Type Warning -Message "Interruption - checkpoint sauvegarde (index $lastCompletedIndex)" -Indent 1
+            $mailboxNumber = $lastCompletedIndex + 1
+            Write-Status -Type Warning -Message "Interruption - checkpoint sauvegarde (mailbox $mailboxNumber/$mailboxCount, index $lastCompletedIndex)" -Indent 1
         }
         elseif ((Get-CheckpointState) -and $lastCompletedIndex -lt $startIndex) {
             # Aucune mailbox completee - ne pas sauvegarder de checkpoint invalide
