@@ -840,13 +840,16 @@ try {
             # Verifier si mailbox inactive
             $isInactive = $mailbox.ExchangeObjectId -in $script:InactiveMailboxIds
 
+            # Collecter toutes les delegations de cette mailbox
+            $mailboxDelegations = [System.Collections.Generic.List[PSCustomObject]]::new()
+
             # FullAccess
             $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
             $statsPerType.FullAccess += $fullAccessDelegations.Count
             foreach ($delegation in $fullAccessDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
-                $allDelegations.Add($delegation)
+                $mailboxDelegations.Add($delegation)
             }
 
             # SendAs
@@ -855,7 +858,7 @@ try {
             foreach ($delegation in $sendAsDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
-                $allDelegations.Add($delegation)
+                $mailboxDelegations.Add($delegation)
             }
 
             # SendOnBehalf
@@ -864,7 +867,7 @@ try {
             foreach ($delegation in $sendOnBehalfDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
-                $allDelegations.Add($delegation)
+                $mailboxDelegations.Add($delegation)
             }
 
             # Calendar
@@ -873,7 +876,7 @@ try {
             foreach ($delegation in $calendarDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
-                $allDelegations.Add($delegation)
+                $mailboxDelegations.Add($delegation)
             }
 
             # Forwarding
@@ -882,10 +885,30 @@ try {
             foreach ($delegation in $forwardingDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
-                $allDelegations.Add($delegation)
+                $mailboxDelegations.Add($delegation)
             }
 
-            # Marquer comme traite + checkpoint periodique
+            # WRITE: Ecrire immediatement dans le CSV (append sans header)
+            if ($mailboxDelegations.Count -gt 0) {
+                # Filtrer si OrphansOnly
+                $dataToWrite = if ($OrphansOnly) {
+                    @($mailboxDelegations | Where-Object { $_.IsOrphan -eq $true })
+                }
+                else {
+                    $mailboxDelegations
+                }
+
+                if ($dataToWrite.Count -gt 0) {
+                    $dataToWrite | ConvertTo-Csv -NoTypeInformation |
+                        Select-Object -Skip 1 |
+                        Add-Content -Path $exportFilePath -Encoding UTF8
+                }
+
+                # Garder en memoire pour stats et cleanup
+                $allDelegations.AddRange($mailboxDelegations)
+            }
+
+            # MARK: Marquer comme traite + checkpoint periodique
             if ($checkpointState) {
                 Add-ProcessedItem -InputObject $mailbox -Index $i
             }
@@ -907,38 +930,22 @@ try {
 
     Write-Status -Type Success -Message "Collecte terminee: $($allDelegations.Count) delegations" -Indent 1
 
-    # Export CSV
-    Write-Status -Type Action -Message "Export CSV..."
-
+    # CSV deja ecrit pendant la boucle (pattern Write-Then-Mark)
+    # Juste afficher le resultat final
     if ($allDelegations.Count -gt 0) {
-        # Filtrer si OrphansOnly
-        $exportData = if ($OrphansOnly) {
-            $allDelegations | Where-Object { $_.IsOrphan -eq $true }
+        $exportedCount = if ($OrphansOnly) {
+            @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count
         }
         else {
-            $allDelegations
+            $allDelegations.Count
         }
 
-        # -WhatIf:$false : L'export CSV doit se faire meme en mode simulation
-        # (WhatIf ne concerne que les suppressions de delegations orphelines)
-        if ($isAppendMode) {
-            # Mode append : ajouter sans header au CSV existant
-            $exportData | ConvertTo-Csv -NoTypeInformation |
-                Select-Object -Skip 1 |
-                Add-Content -Path $exportFilePath -Encoding UTF8
-            Write-Status -Type Success -Message "Append: $exportFilePath (+$($exportData.Count) lignes)" -Indent 1
-        }
-        else {
-            # Nouveau fichier avec header
-            $exportData | Export-Csv -Path $exportFilePath -NoTypeInformation -Encoding UTF8 -WhatIf:$false
-            Write-Status -Type Success -Message "Export: $exportFilePath" -Indent 1
-        }
+        Write-Status -Type Success -Message "Export: $exportFilePath ($exportedCount lignes)" -Indent 1
         $filterNote = if ($OrphansOnly) { " (orphelins uniquement)" } else { "" }
-        $modeNote = if ($isAppendMode) { " [append]" } else { "" }
-        Write-Log "Export CSV: $exportFilePath ($($exportData.Count) lignes$filterNote$modeNote)" -Level SUCCESS
+        Write-Log "Export CSV: $exportFilePath ($exportedCount lignes$filterNote)" -Level SUCCESS
     }
     else {
-        Write-Status -Type Warning -Message "Aucune delegation trouvee - pas d'export" -Indent 1
+        Write-Status -Type Warning -Message "Aucune delegation trouvee" -Indent 1
         Write-Log "Aucune delegation a exporter" -Level WARNING
     }
 
