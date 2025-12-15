@@ -145,5 +145,5 @@ Labels : bug elevated checkpoint statistics
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| Statut | CLOSED |
 | Branche | fix/BUG-006-statistiques-reprise-checkpoint |

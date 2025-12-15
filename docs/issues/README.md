@@ -21,6 +21,7 @@
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-006 | Statistiques incorrectes en reprise checkpoint | 2025-12-15 | local |
 | FEAT-011 | Colonne MailboxType dans export CSV | 2025-12-15 | local |
 | BUG-005 | Header CSV inverse + tri checkpoint | 2025-12-15 | local |
 | BUG-004 | Variable locale vs etat module | 2025-12-15 | #16 |
