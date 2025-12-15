@@ -151,10 +151,10 @@ Labels : feature moyenne checkpoint csv
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | local |
-| Statut | RESOLVED |
+| GitHub Issue | #13 |
+| Statut | CLOSED |
 | Branche | feature/FEAT-010-checkpoint-append-csv |
-| Commit | (avec REFACTOR-004) |
+| Commit | 8a556f2 (avec REFACTOR-004) |
 
 ---
 
