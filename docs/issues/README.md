@@ -15,7 +15,6 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
-| BUG-002 | CsvPath non restaure depuis checkpoint | [!!] Critique |
 | BUG-003 | Condition finally trop restrictive | [~] Moyenne |
 | BUG-004 | Variable locale vs etat module | [-] Faible |
 
@@ -23,6 +22,7 @@
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-002 | CsvPath non restaure depuis checkpoint | 2025-12-15 | #14 |
 | FEAT-008 | Parametre -IncludeInactive mailboxes | 2025-12-15 | local |
 | REFACTOR-001 | Write-Status vers module ConsoleUI | 2025-12-15 | local |
 | FEAT-003 | Colonne IsOrphan pour delegations orphelines | 2025-12-15 | #6 |

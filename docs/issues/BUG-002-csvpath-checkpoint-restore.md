@@ -109,10 +109,10 @@ Labels : bug critique checkpoint csv
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres sync) |
-| Statut | RESOLVED |
+| GitHub Issue | #14 |
+| Statut | CLOSED |
 | Branche | fix/BUG-002-csvpath-checkpoint-restore |
-| Commit | (apres merge) |
+| Commit | 76d10b4 |
 
 ---
 
