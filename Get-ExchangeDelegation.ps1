@@ -661,27 +661,27 @@ try {
         }
 
         # FullAccess
-        $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
+        $fullAccessDelegations = @(Get-MailboxFullAccessDelegation -Mailbox $mailbox)
         $statsPerType.FullAccess += $fullAccessDelegations.Count
         $allDelegations.AddRange($fullAccessDelegations)
 
         # SendAs
-        $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox
+        $sendAsDelegations = @(Get-MailboxSendAsDelegation -Mailbox $mailbox)
         $statsPerType.SendAs += $sendAsDelegations.Count
         $allDelegations.AddRange($sendAsDelegations)
 
         # SendOnBehalf
-        $sendOnBehalfDelegations = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
+        $sendOnBehalfDelegations = @(Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox)
         $statsPerType.SendOnBehalf += $sendOnBehalfDelegations.Count
         $allDelegations.AddRange($sendOnBehalfDelegations)
 
         # Calendar
-        $calendarDelegations = Get-MailboxCalendarDelegation -Mailbox $mailbox
+        $calendarDelegations = @(Get-MailboxCalendarDelegation -Mailbox $mailbox)
         $statsPerType.Calendar += $calendarDelegations.Count
         $allDelegations.AddRange($calendarDelegations)
 
         # Forwarding
-        $forwardingDelegations = Get-MailboxForwardingDelegation -Mailbox $mailbox
+        $forwardingDelegations = @(Get-MailboxForwardingDelegation -Mailbox $mailbox)
         $statsPerType.Forwarding += $forwardingDelegations.Count
         $allDelegations.AddRange($forwardingDelegations)
     }
