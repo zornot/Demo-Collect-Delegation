@@ -720,7 +720,7 @@ try {
     Write-Status -Type Info -Message "Types inclus: $($mailboxTypes -join ', ')" -Indent 1
 
     # Recuperation des mailboxes actives
-    $allMailboxes = Get-EXOMailbox -ResultSize Unlimited -RecipientTypeDetails $mailboxTypes -Properties DisplayName, PrimarySmtpAddress, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
+    $allMailboxes = Get-EXOMailbox -ResultSize Unlimited -RecipientTypeDetails $mailboxTypes -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
     $activeCount = $allMailboxes.Count
     Write-Status -Type Success -Message "$activeCount mailboxes actives trouvees" -Indent 1
 
@@ -728,7 +728,7 @@ try {
     $script:InactiveMailboxIds = @()
     if ($IncludeInactive) {
         Write-Status -Type Info -Message "Recuperation des mailboxes inactives..." -Indent 1
-        $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
+        $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
         $script:InactiveMailboxIds = $inactiveMailboxes | ForEach-Object { $_.ExchangeObjectId }
         $allMailboxes = @($allMailboxes) + @($inactiveMailboxes)
         Write-Status -Type Success -Message "$($inactiveMailboxes.Count) mailboxes inactives ajoutees" -Indent 1
