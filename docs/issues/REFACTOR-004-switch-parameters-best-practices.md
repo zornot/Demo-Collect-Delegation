@@ -168,5 +168,5 @@ Labels : refactor parameters powershell-best-practices breaking-change
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| Statut | CLOSED |
 | Branche | feature/REFACTOR-004-switch-parameters-best-practices |
