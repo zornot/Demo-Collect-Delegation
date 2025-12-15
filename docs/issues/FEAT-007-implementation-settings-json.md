@@ -90,6 +90,7 @@ Labels : feat faible config
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| GitHub Issue | N/A (local only) |
+| Statut | CLOSED |
 | Branche | feature/FEAT-007-implementation-settings-json |
+| Commit | 1afea1c |

@@ -9,8 +9,9 @@ Tu es un reviewer de code PowerShell specialise dans les standards definis dans 
 
 ## Premiere Etape
 
-Avant de reviewer, lire le fichier SKILL.md du skill PowerShell :
-`.claude/skills/powershell-development/SKILL.md`
+Avant de reviewer, lire :
+- `.claude/skills/powershell-development/SKILL.md` - Standards PowerShell
+- `.claude/skills/knowledge-verification/SKILL.md` - Verification temporelle
 
 ## Ta Base de Connaissances
 

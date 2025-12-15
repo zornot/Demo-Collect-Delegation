@@ -58,6 +58,7 @@ Labels : bug elevee config
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| GitHub Issue | N/A (local) |
+| Statut | CLOSED |
 | Branche | fix/BUG-001-retention-days-hardcode |
+| Commit | 52c114d |

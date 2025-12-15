@@ -28,6 +28,7 @@ natifs offrent une meilleure automatisation.
 │       ├── powershell-development/  # Standards PowerShell
 │       ├── development-workflow/    # Git, TDD, workflow
 │       ├── code-audit/              # Methodologie audit
+│       ├── knowledge-verification/  # Verification temporelle
 │       └── progress-tracking/       # Templates progression
 │
 ├── audit/                       # RAPPORTS D'AUDIT

@@ -71,7 +71,9 @@ BeforeAll {
             [string]$TrusteeDisplayName,
             [string]$DelegationType,
             [string]$AccessRights,
-            [string]$FolderPath = ''
+            [string]$FolderPath = '',
+            [bool]$IsOrphan = $false,
+            [string]$MailboxLastLogon = ''
         )
 
         [PSCustomObject]@{
@@ -82,7 +84,38 @@ BeforeAll {
             DelegationType     = $DelegationType
             AccessRights       = $AccessRights
             FolderPath         = $FolderPath
+            IsOrphan           = $IsOrphan
+            MailboxLastLogon   = $MailboxLastLogon
             CollectedAt        = $script:CollectionTimestamp
+        }
+    }
+
+    function Resolve-TrusteeInfo {
+        param(
+            [Parameter(Mandatory)]
+            [AllowEmptyString()]
+            [string]$Identity
+        )
+
+        if ([string]::IsNullOrWhiteSpace($Identity)) {
+            return $null
+        }
+
+        # Simuler la resolution - dans les tests on mock Get-Recipient
+        try {
+            $recipient = Get-Recipient -Identity $Identity -ErrorAction Stop
+            return [PSCustomObject]@{
+                Email       = $recipient.PrimarySmtpAddress
+                DisplayName = $recipient.DisplayName
+                Resolved    = $true
+            }
+        }
+        catch {
+            return [PSCustomObject]@{
+                Email       = $Identity
+                DisplayName = $Identity
+                Resolved    = $false
+            }
         }
     }
 }
@@ -377,7 +410,7 @@ Describe 'New-DelegationRecord' -Tag 'Unit' {
             $csvOutput[0] | Should -Match 'CollectedAt'
         }
 
-        It 'Contient exactement 8 proprietes' {
+        It 'Contient exactement 10 proprietes' {
             # Arrange
             $params = @{
                 MailboxEmail       = 'test@contoso.com'
@@ -393,7 +426,7 @@ Describe 'New-DelegationRecord' -Tag 'Unit' {
             $properties = $record.PSObject.Properties.Name
 
             # Assert
-            $properties | Should -HaveCount 8
+            $properties | Should -HaveCount 10
             $properties | Should -Contain 'MailboxEmail'
             $properties | Should -Contain 'MailboxDisplayName'
             $properties | Should -Contain 'TrusteeEmail'
@@ -401,7 +434,952 @@ Describe 'New-DelegationRecord' -Tag 'Unit' {
             $properties | Should -Contain 'DelegationType'
             $properties | Should -Contain 'AccessRights'
             $properties | Should -Contain 'FolderPath'
+            $properties | Should -Contain 'IsOrphan'
+            $properties | Should -Contain 'MailboxLastLogon'
             $properties | Should -Contain 'CollectedAt'
+        }
+    }
+
+    Context 'Propriete IsOrphan (FEAT-003)' {
+
+        It 'IsOrphan est $false par defaut' {
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'user@contoso.com'
+                MailboxDisplayName = 'User'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.IsOrphan | Should -BeFalse
+        }
+
+        It 'IsOrphan peut etre $true pour delegation orpheline' {
+            # Arrange - SID orphelin
+            $params = @{
+                MailboxEmail       = 'shared@contoso.com'
+                MailboxDisplayName = 'Shared Mailbox'
+                TrusteeEmail       = 'S-1-5-21-583983544-471682574-2706792393-39628563'
+                TrusteeDisplayName = 'S-1-5-21-583983544-471682574-2706792393-39628563'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+                IsOrphan           = $true
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.IsOrphan | Should -BeTrue
+            $record.TrusteeEmail | Should -Match '^S-1-5-21-'
+        }
+    }
+
+    Context 'Propriete MailboxLastLogon (FEAT-005)' {
+
+        It 'MailboxLastLogon est vide par defaut' {
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'user@contoso.com'
+                MailboxDisplayName = 'User'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.MailboxLastLogon | Should -Be ''
+        }
+
+        It 'MailboxLastLogon peut contenir une date au format dd/MM/yyyy' {
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'user@contoso.com'
+                MailboxDisplayName = 'User'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+                MailboxLastLogon   = '15/12/2025'
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.MailboxLastLogon | Should -Be '15/12/2025'
+        }
+    }
+}
+
+Describe 'Resolve-TrusteeInfo' -Tag 'Unit' {
+
+    BeforeAll {
+        # Stub pour Get-Recipient (requis pour Pester Mock)
+        function Get-Recipient { param($Identity) }
+    }
+
+    Context 'Resolution reussie' {
+
+        BeforeAll {
+            # Mock Get-Recipient pour simuler un destinataire trouve
+            Mock Get-Recipient {
+                [PSCustomObject]@{
+                    PrimarySmtpAddress = 'jean.dupont@contoso.com'
+                    DisplayName        = 'Jean DUPONT'
+                }
+            }
+        }
+
+        It 'Retourne les infos resolues pour un email valide' {
+            # Act
+            $result = Resolve-TrusteeInfo -Identity 'jean.dupont@contoso.com'
+
+            # Assert
+            $result | Should -Not -BeNullOrEmpty
+            $result.Email | Should -Be 'jean.dupont@contoso.com'
+            $result.DisplayName | Should -Be 'Jean DUPONT'
+            $result.Resolved | Should -BeTrue
+        }
+
+        It 'Appelle Get-Recipient avec la bonne identite' {
+            # Act
+            Resolve-TrusteeInfo -Identity 'test.user@contoso.com'
+
+            # Assert
+            Should -Invoke Get-Recipient -Times 1 -ParameterFilter {
+                $Identity -eq 'test.user@contoso.com'
+            }
+        }
+    }
+
+    Context 'Resolution echouee' {
+
+        BeforeAll {
+            # Mock Get-Recipient qui echoue
+            Mock Get-Recipient {
+                throw "The operation couldn't be performed because object 'unknown@contoso.com' couldn't be found"
+            }
+        }
+
+        It 'Retourne l identite brute si destinataire introuvable' {
+            # Act
+            $result = Resolve-TrusteeInfo -Identity 'unknown@contoso.com'
+
+            # Assert
+            $result | Should -Not -BeNullOrEmpty
+            $result.Email | Should -Be 'unknown@contoso.com'
+            $result.DisplayName | Should -Be 'unknown@contoso.com'
+            $result.Resolved | Should -BeFalse
+        }
+
+        It 'Retourne le SID orphelin tel quel' {
+            # Arrange - SID orphelin
+            $orphanSid = 'S-1-5-21-583983544-471682574-2706792393-39628563'
+
+            # Act
+            $result = Resolve-TrusteeInfo -Identity $orphanSid
+
+            # Assert
+            $result.Email | Should -Be $orphanSid
+            $result.Resolved | Should -BeFalse
+        }
+    }
+
+    Context 'Cas limites' {
+
+        It 'Retourne $null pour une chaine vide' {
+            # Act
+            $result = Resolve-TrusteeInfo -Identity ''
+
+            # Assert
+            $result | Should -BeNullOrEmpty
+        }
+
+        It 'Retourne $null pour des espaces uniquement' {
+            # Act
+            $result = Resolve-TrusteeInfo -Identity '   '
+
+            # Assert
+            $result | Should -BeNullOrEmpty
+        }
+    }
+}
+
+Describe 'Get-MailboxFullAccessDelegation' -Tag 'Unit', 'Integration' {
+
+    BeforeAll {
+        # Stubs pour cmdlets Exchange (requis pour Pester Mock)
+        function Get-MailboxPermission { param($Identity) }
+        function Get-Recipient { param($Identity) }
+
+        # Definition de la fonction pour les tests
+        function Get-MailboxFullAccessDelegation {
+            param([object]$Mailbox)
+
+            $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+            try {
+                $permissions = Get-MailboxPermission -Identity $Mailbox.Identity -ErrorAction Stop |
+                    Where-Object {
+                        $_.AccessRights -contains 'FullAccess' -and
+                        -not $_.IsInherited -and
+                        -not (Test-IsSystemAccount -Identity $_.User)
+                    }
+
+                foreach ($permission in $permissions) {
+                    $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.User
+                    $isOrphan = $trusteeInfo.Email -match '^S-1-5-21-'
+
+                    $delegationRecord = New-DelegationRecord `
+                        -MailboxEmail $Mailbox.PrimarySmtpAddress `
+                        -MailboxDisplayName $Mailbox.DisplayName `
+                        -TrusteeEmail $trusteeInfo.Email `
+                        -TrusteeDisplayName $trusteeInfo.DisplayName `
+                        -DelegationType 'FullAccess' `
+                        -AccessRights 'FullAccess' `
+                        -IsOrphan $isOrphan
+
+                    $delegationList.Add($delegationRecord)
+                }
+            }
+            catch {
+                # Silently continue for tests
+            }
+
+            return $delegationList
+        }
+
+        # Mock mailbox objet
+        $script:TestMailbox = [PSCustomObject]@{
+            Identity           = 'shared@contoso.com'
+            PrimarySmtpAddress = 'shared@contoso.com'
+            DisplayName        = 'Shared Mailbox Contoso'
+        }
+    }
+
+    Context 'Permissions FullAccess valides' {
+
+        BeforeAll {
+            # Mock Get-MailboxPermission avec delegations valides
+            Mock Get-MailboxPermission {
+                @(
+                    [PSCustomObject]@{
+                        User         = 'jean.dupont@contoso.com'
+                        AccessRights = @('FullAccess')
+                        IsInherited  = $false
+                    },
+                    [PSCustomObject]@{
+                        User         = 'marie.martin@contoso.com'
+                        AccessRights = @('FullAccess')
+                        IsInherited  = $false
+                    }
+                )
+            }
+
+            # Mock Resolve-TrusteeInfo
+            Mock Resolve-TrusteeInfo {
+                param($Identity)
+                [PSCustomObject]@{
+                    Email       = $Identity
+                    DisplayName = $Identity.Split('@')[0] -replace '\.', ' '
+                    Resolved    = $true
+                }
+            }
+        }
+
+        It 'Retourne les delegations FullAccess' {
+            # Act
+            $result = Get-MailboxFullAccessDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 2
+            $result[0].DelegationType | Should -Be 'FullAccess'
+            $result[0].AccessRights | Should -Be 'FullAccess'
+        }
+
+        It 'Inclut les infos mailbox correctes' {
+            # Act
+            $result = Get-MailboxFullAccessDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result[0].MailboxEmail | Should -Be 'shared@contoso.com'
+            $result[0].MailboxDisplayName | Should -Be 'Shared Mailbox Contoso'
+        }
+
+        It 'Inclut les infos trustee correctes' {
+            # Act
+            $result = Get-MailboxFullAccessDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result[0].TrusteeEmail | Should -Be 'jean.dupont@contoso.com'
+        }
+    }
+
+    Context 'Filtrage comptes systeme' {
+
+        BeforeAll {
+            Mock Get-MailboxPermission {
+                @(
+                    [PSCustomObject]@{
+                        User         = 'NT AUTHORITY\SELF'
+                        AccessRights = @('FullAccess')
+                        IsInherited  = $false
+                    },
+                    [PSCustomObject]@{
+                        User         = 'jean.dupont@contoso.com'
+                        AccessRights = @('FullAccess')
+                        IsInherited  = $false
+                    }
+                )
+            }
+
+            Mock Resolve-TrusteeInfo {
+                param($Identity)
+                [PSCustomObject]@{
+                    Email       = $Identity
+                    DisplayName = $Identity
+                    Resolved    = $true
+                }
+            }
+        }
+
+        It 'Exclut NT AUTHORITY\SELF' {
+            # Act
+            $result = Get-MailboxFullAccessDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].TrusteeEmail | Should -Be 'jean.dupont@contoso.com'
+        }
+    }
+
+    Context 'Detection delegations orphelines' {
+
+        BeforeAll {
+            Mock Get-MailboxPermission {
+                @(
+                    [PSCustomObject]@{
+                        User         = 'S-1-5-21-583983544-471682574-2706792393-39628563'
+                        AccessRights = @('FullAccess')
+                        IsInherited  = $false
+                    }
+                )
+            }
+
+            Mock Resolve-TrusteeInfo {
+                param($Identity)
+                [PSCustomObject]@{
+                    Email       = $Identity
+                    DisplayName = $Identity
+                    Resolved    = $false
+                }
+            }
+        }
+
+        It 'Marque IsOrphan = $true pour SID orphelin' {
+            # Act
+            $result = Get-MailboxFullAccessDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].IsOrphan | Should -BeTrue
+            $result[0].TrusteeEmail | Should -Match '^S-1-5-21-'
+        }
+    }
+
+    Context 'Aucune delegation' {
+
+        BeforeAll {
+            Mock Get-MailboxPermission { @() }
+        }
+
+        It 'Retourne liste vide si aucune permission FullAccess' {
+            # Act
+            $result = Get-MailboxFullAccessDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 0
+        }
+    }
+}
+
+Describe 'Get-MailboxSendAsDelegation' -Tag 'Unit', 'Integration' {
+
+    BeforeAll {
+        # Stubs pour cmdlets Exchange (requis pour Pester Mock)
+        function Get-RecipientPermission { param($Identity) }
+        function Get-Recipient { param($Identity) }
+
+        function Get-MailboxSendAsDelegation {
+            param([object]$Mailbox)
+
+            $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+            try {
+                $permissions = Get-RecipientPermission -Identity $Mailbox.Identity -ErrorAction Stop |
+                    Where-Object {
+                        $_.AccessRights -contains 'SendAs' -and
+                        -not (Test-IsSystemAccount -Identity $_.Trustee)
+                    }
+
+                foreach ($permission in $permissions) {
+                    $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.Trustee
+                    $isOrphan = $trusteeInfo.Email -match '^S-1-5-21-'
+
+                    $delegationRecord = New-DelegationRecord `
+                        -MailboxEmail $Mailbox.PrimarySmtpAddress `
+                        -MailboxDisplayName $Mailbox.DisplayName `
+                        -TrusteeEmail $trusteeInfo.Email `
+                        -TrusteeDisplayName $trusteeInfo.DisplayName `
+                        -DelegationType 'SendAs' `
+                        -AccessRights 'SendAs' `
+                        -IsOrphan $isOrphan
+
+                    $delegationList.Add($delegationRecord)
+                }
+            }
+            catch {
+                # Silently continue for tests
+            }
+
+            return $delegationList
+        }
+
+        $script:TestMailbox = [PSCustomObject]@{
+            Identity           = 'user@contoso.com'
+            PrimarySmtpAddress = 'user@contoso.com'
+            DisplayName        = 'User Contoso'
+        }
+    }
+
+    Context 'Permissions SendAs valides' {
+
+        BeforeAll {
+            Mock Get-RecipientPermission {
+                @(
+                    [PSCustomObject]@{
+                        Trustee      = 'assistant@contoso.com'
+                        AccessRights = @('SendAs')
+                    }
+                )
+            }
+
+            Mock Resolve-TrusteeInfo {
+                param($Identity)
+                [PSCustomObject]@{
+                    Email       = $Identity
+                    DisplayName = 'Assistant Contoso'
+                    Resolved    = $true
+                }
+            }
+        }
+
+        It 'Retourne les delegations SendAs' {
+            # Act
+            $result = Get-MailboxSendAsDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].DelegationType | Should -Be 'SendAs'
+            $result[0].TrusteeEmail | Should -Be 'assistant@contoso.com'
+        }
+    }
+
+    Context 'Aucune delegation' {
+
+        BeforeAll {
+            Mock Get-RecipientPermission { @() }
+        }
+
+        It 'Retourne liste vide si aucune permission SendAs' {
+            # Act
+            $result = Get-MailboxSendAsDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 0
+        }
+    }
+}
+
+Describe 'Get-MailboxSendOnBehalfDelegation' -Tag 'Unit', 'Integration' {
+
+    BeforeAll {
+        # Stubs pour cmdlets Exchange (requis pour Pester Mock)
+        function Get-Recipient { param($Identity) }
+
+        function Get-MailboxSendOnBehalfDelegation {
+            param([object]$Mailbox)
+
+            $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+            if ($null -eq $Mailbox.GrantSendOnBehalfTo -or $Mailbox.GrantSendOnBehalfTo.Count -eq 0) {
+                return $delegationList
+            }
+
+            foreach ($trustee in $Mailbox.GrantSendOnBehalfTo) {
+                try {
+                    $trusteeInfo = Resolve-TrusteeInfo -Identity $trustee
+
+                    if ($null -ne $trusteeInfo -and -not (Test-IsSystemAccount -Identity $trusteeInfo.Email)) {
+                        $isOrphan = $trusteeInfo.Email -match '^S-1-5-21-'
+
+                        $delegationRecord = New-DelegationRecord `
+                            -MailboxEmail $Mailbox.PrimarySmtpAddress `
+                            -MailboxDisplayName $Mailbox.DisplayName `
+                            -TrusteeEmail $trusteeInfo.Email `
+                            -TrusteeDisplayName $trusteeInfo.DisplayName `
+                            -DelegationType 'SendOnBehalf' `
+                            -AccessRights 'SendOnBehalf' `
+                            -IsOrphan $isOrphan
+
+                        $delegationList.Add($delegationRecord)
+                    }
+                }
+                catch {
+                    # Silently continue
+                }
+            }
+
+            return $delegationList
+        }
+    }
+
+    Context 'Permissions SendOnBehalf via propriete mailbox' {
+
+        BeforeAll {
+            Mock Resolve-TrusteeInfo {
+                param($Identity)
+                [PSCustomObject]@{
+                    Email       = "$Identity@contoso.com"
+                    DisplayName = $Identity
+                    Resolved    = $true
+                }
+            }
+        }
+
+        It 'Retourne les delegations SendOnBehalf' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity            = 'exec@contoso.com'
+                PrimarySmtpAddress  = 'exec@contoso.com'
+                DisplayName         = 'Executive Contoso'
+                GrantSendOnBehalfTo = @('assistant1', 'assistant2')
+            }
+
+            # Act
+            $result = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 2
+            $result[0].DelegationType | Should -Be 'SendOnBehalf'
+        }
+
+        It 'Retourne liste vide si GrantSendOnBehalfTo est null' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity            = 'user@contoso.com'
+                PrimarySmtpAddress  = 'user@contoso.com'
+                DisplayName         = 'User'
+                GrantSendOnBehalfTo = $null
+            }
+
+            # Act
+            $result = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 0
+        }
+
+        It 'Retourne liste vide si GrantSendOnBehalfTo est vide' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity            = 'user@contoso.com'
+                PrimarySmtpAddress  = 'user@contoso.com'
+                DisplayName         = 'User'
+                GrantSendOnBehalfTo = @()
+            }
+
+            # Act
+            $result = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 0
+        }
+    }
+}
+
+Describe 'Get-MailboxCalendarDelegation' -Tag 'Unit', 'Integration' {
+
+    BeforeAll {
+        # Stubs pour cmdlets Exchange (requis pour Pester Mock)
+        function Get-MailboxFolderStatistics { param($Identity, $FolderScope) }
+        function Get-MailboxFolderPermission { param($Identity) }
+        function Get-Recipient { param($Identity) }
+
+        function Get-MailboxCalendarDelegation {
+            param([object]$Mailbox)
+
+            $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+            try {
+                $calendarFolder = Get-MailboxFolderStatistics -Identity $Mailbox.PrimarySmtpAddress -FolderScope Calendar -ErrorAction Stop |
+                    Where-Object { $_.FolderType -eq 'Calendar' } |
+                    Select-Object -First 1
+
+                if (-not $calendarFolder) {
+                    return $delegationList
+                }
+
+                $folderName = $calendarFolder.Name
+                $calendarFolderPath = "$($Mailbox.PrimarySmtpAddress):\$folderName"
+
+                $permissions = Get-MailboxFolderPermission -Identity $calendarFolderPath -ErrorAction Stop |
+                    Where-Object {
+                        $_.User.DisplayName -notin @('Default', 'Anonymous', 'Par défaut', 'Anonyme') -and
+                        -not (Test-IsSystemAccount -Identity $_.User.DisplayName)
+                    }
+
+                foreach ($permission in $permissions) {
+                    $trusteeEmail = $permission.User.ADRecipient.PrimarySmtpAddress ?? $permission.User.DisplayName
+                    $trusteeDisplayName = $permission.User.DisplayName
+
+                    if (Test-IsSystemAccount -Identity $trusteeEmail) { continue }
+
+                    $isOrphan = ($trusteeEmail -match '^S-1-5-21-') -or ($null -eq $permission.User.ADRecipient)
+
+                    $accessRightsList = $permission.AccessRights -join ', '
+
+                    $delegationRecord = New-DelegationRecord `
+                        -MailboxEmail $Mailbox.PrimarySmtpAddress `
+                        -MailboxDisplayName $Mailbox.DisplayName `
+                        -TrusteeEmail $trusteeEmail `
+                        -TrusteeDisplayName $trusteeDisplayName `
+                        -DelegationType 'Calendar' `
+                        -AccessRights $accessRightsList `
+                        -FolderPath $folderName `
+                        -IsOrphan $isOrphan
+
+                    $delegationList.Add($delegationRecord)
+                }
+            }
+            catch {
+                # Silently continue
+            }
+
+            return $delegationList
+        }
+
+        $script:TestMailbox = [PSCustomObject]@{
+            Identity           = 'room@contoso.com'
+            PrimarySmtpAddress = 'room@contoso.com'
+            DisplayName        = 'Salle de reunion Contoso'
+        }
+    }
+
+    Context 'Permissions calendrier' {
+
+        BeforeAll {
+            Mock Get-MailboxFolderStatistics {
+                @([PSCustomObject]@{
+                        Name       = 'Calendrier'
+                        FolderType = 'Calendar'
+                    })
+            }
+
+            Mock Get-MailboxFolderPermission {
+                @(
+                    [PSCustomObject]@{
+                        User         = [PSCustomObject]@{
+                            DisplayName = 'Jean DUPONT'
+                            ADRecipient = [PSCustomObject]@{
+                                PrimarySmtpAddress = 'jean.dupont@contoso.com'
+                            }
+                        }
+                        AccessRights = @('Editor')
+                    }
+                )
+            }
+        }
+
+        It 'Retourne les delegations Calendar' {
+            # Act
+            $result = Get-MailboxCalendarDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].DelegationType | Should -Be 'Calendar'
+            $result[0].FolderPath | Should -Be 'Calendrier'
+        }
+
+        It 'Inclut le nom localise du calendrier (Calendrier vs Calendar)' {
+            # Act
+            $result = Get-MailboxCalendarDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result[0].FolderPath | Should -Be 'Calendrier'
+        }
+    }
+
+    Context 'Detection orphelins calendrier (nom cache)' {
+
+        BeforeAll {
+            Mock Get-MailboxFolderStatistics {
+                @([PSCustomObject]@{
+                        Name       = 'Calendar'
+                        FolderType = 'Calendar'
+                    })
+            }
+
+            Mock Get-MailboxFolderPermission {
+                @(
+                    [PSCustomObject]@{
+                        User         = [PSCustomObject]@{
+                            DisplayName = 'Ancien Employe'
+                            ADRecipient = $null  # ADRecipient null = orphelin
+                        }
+                        AccessRights = @('Reviewer')
+                    }
+                )
+            }
+        }
+
+        It 'Marque IsOrphan = $true quand ADRecipient est null' {
+            # Act
+            $result = Get-MailboxCalendarDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].IsOrphan | Should -BeTrue
+            $result[0].TrusteeDisplayName | Should -Be 'Ancien Employe'
+        }
+    }
+
+    Context 'Filtrage Default/Anonymous' {
+
+        BeforeAll {
+            Mock Get-MailboxFolderStatistics {
+                @([PSCustomObject]@{
+                        Name       = 'Calendar'
+                        FolderType = 'Calendar'
+                    })
+            }
+
+            Mock Get-MailboxFolderPermission {
+                @(
+                    [PSCustomObject]@{
+                        User         = [PSCustomObject]@{
+                            DisplayName = 'Default'
+                            ADRecipient = $null
+                        }
+                        AccessRights = @('AvailabilityOnly')
+                    },
+                    [PSCustomObject]@{
+                        User         = [PSCustomObject]@{
+                            DisplayName = 'jean.dupont@contoso.com'
+                            ADRecipient = [PSCustomObject]@{
+                                PrimarySmtpAddress = 'jean.dupont@contoso.com'
+                            }
+                        }
+                        AccessRights = @('Editor')
+                    }
+                )
+            }
+        }
+
+        It 'Exclut les permissions Default' {
+            # Act
+            $result = Get-MailboxCalendarDelegation -Mailbox $script:TestMailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].TrusteeEmail | Should -Not -Be 'Default'
+        }
+    }
+}
+
+Describe 'Get-MailboxForwardingDelegation' -Tag 'Unit', 'Integration' {
+
+    BeforeAll {
+        # Stubs pour cmdlets Exchange (requis pour Pester Mock)
+        function Get-Recipient { param($Identity) }
+
+        function Get-MailboxForwardingDelegation {
+            param([object]$Mailbox)
+
+            $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+            # ForwardingSmtpAddress
+            if (-not [string]::IsNullOrWhiteSpace($Mailbox.ForwardingSmtpAddress)) {
+                $forwardingAddress = $Mailbox.ForwardingSmtpAddress -replace '^smtp:', ''
+
+                $delegationRecord = New-DelegationRecord `
+                    -MailboxEmail $Mailbox.PrimarySmtpAddress `
+                    -MailboxDisplayName $Mailbox.DisplayName `
+                    -TrusteeEmail $forwardingAddress `
+                    -TrusteeDisplayName $forwardingAddress `
+                    -DelegationType 'Forwarding' `
+                    -AccessRights 'ForwardingSmtpAddress'
+
+                $delegationList.Add($delegationRecord)
+            }
+
+            # ForwardingAddress (interne)
+            if (-not [string]::IsNullOrWhiteSpace($Mailbox.ForwardingAddress)) {
+                try {
+                    $forwardingRecipient = Get-Recipient -Identity $Mailbox.ForwardingAddress -ErrorAction SilentlyContinue
+
+                    if ($null -ne $forwardingRecipient) {
+                        $delegationRecord = New-DelegationRecord `
+                            -MailboxEmail $Mailbox.PrimarySmtpAddress `
+                            -MailboxDisplayName $Mailbox.DisplayName `
+                            -TrusteeEmail $forwardingRecipient.PrimarySmtpAddress `
+                            -TrusteeDisplayName $forwardingRecipient.DisplayName `
+                            -DelegationType 'Forwarding' `
+                            -AccessRights 'ForwardingAddress'
+
+                        $delegationList.Add($delegationRecord)
+                    }
+                }
+                catch {
+                    # Silently continue
+                }
+            }
+
+            return $delegationList
+        }
+    }
+
+    Context 'ForwardingSmtpAddress (externe)' {
+
+        It 'Detecte ForwardingSmtpAddress avec prefixe smtp:' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity              = 'user@contoso.com'
+                PrimarySmtpAddress    = 'user@contoso.com'
+                DisplayName           = 'User Contoso'
+                ForwardingSmtpAddress = 'smtp:backup@fabrikam.com'
+                ForwardingAddress     = $null
+            }
+
+            # Act
+            $result = Get-MailboxForwardingDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].DelegationType | Should -Be 'Forwarding'
+            $result[0].AccessRights | Should -Be 'ForwardingSmtpAddress'
+            $result[0].TrusteeEmail | Should -Be 'backup@fabrikam.com'
+        }
+
+        It 'Detecte ForwardingSmtpAddress sans prefixe' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity              = 'user@contoso.com'
+                PrimarySmtpAddress    = 'user@contoso.com'
+                DisplayName           = 'User'
+                ForwardingSmtpAddress = 'external@gmail.com'
+                ForwardingAddress     = $null
+            }
+
+            # Act
+            $result = Get-MailboxForwardingDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].TrusteeEmail | Should -Be 'external@gmail.com'
+        }
+    }
+
+    Context 'ForwardingAddress (interne)' {
+
+        BeforeAll {
+            Mock Get-Recipient {
+                [PSCustomObject]@{
+                    PrimarySmtpAddress = 'manager@contoso.com'
+                    DisplayName        = 'Manager Contoso'
+                }
+            }
+        }
+
+        It 'Detecte ForwardingAddress interne' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity              = 'user@contoso.com'
+                PrimarySmtpAddress    = 'user@contoso.com'
+                DisplayName           = 'User'
+                ForwardingSmtpAddress = $null
+                ForwardingAddress     = 'contoso.com/Users/Manager'
+            }
+
+            # Act
+            $result = Get-MailboxForwardingDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].AccessRights | Should -Be 'ForwardingAddress'
+            $result[0].TrusteeEmail | Should -Be 'manager@contoso.com'
+        }
+    }
+
+    Context 'Aucun forwarding' {
+
+        It 'Retourne liste vide si aucun forwarding configure' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity              = 'user@contoso.com'
+                PrimarySmtpAddress    = 'user@contoso.com'
+                DisplayName           = 'User'
+                ForwardingSmtpAddress = $null
+                ForwardingAddress     = $null
+            }
+
+            # Act
+            $result = Get-MailboxForwardingDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 0
+        }
+    }
+
+    Context 'Les deux types de forwarding' {
+
+        BeforeAll {
+            Mock Get-Recipient {
+                [PSCustomObject]@{
+                    PrimarySmtpAddress = 'internal@contoso.com'
+                    DisplayName        = 'Internal User'
+                }
+            }
+        }
+
+        It 'Retourne les deux delegations si les deux sont configures' {
+            # Arrange
+            $mailbox = [PSCustomObject]@{
+                Identity              = 'user@contoso.com'
+                PrimarySmtpAddress    = 'user@contoso.com'
+                DisplayName           = 'User'
+                ForwardingSmtpAddress = 'smtp:external@fabrikam.com'
+                ForwardingAddress     = 'contoso.com/Users/Internal'
+            }
+
+            # Act
+            $result = Get-MailboxForwardingDelegation -Mailbox $mailbox
+
+            # Assert
+            $result | Should -HaveCount 2
+            ($result | Where-Object AccessRights -EQ 'ForwardingSmtpAddress').TrusteeEmail | Should -Be 'external@fabrikam.com'
+            ($result | Where-Object AccessRights -EQ 'ForwardingAddress').TrusteeEmail | Should -Be 'internal@contoso.com'
         }
     }
 }

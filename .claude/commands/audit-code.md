@@ -57,6 +57,7 @@ Lire les fichiers de methodologie AVANT de commencer :
 1. `.claude/skills/code-audit/methodology.md` - Structure 6 phases
 2. `.claude/skills/code-audit/anti-false-positives.md` - Protocole validation
 3. `.claude/skills/code-audit/metrics-sqale.md` - Quantification metriques
+4. `.claude/skills/knowledge-verification/SKILL.md` - Verification temporelle
 
 Puis lire les regles specifiques :
 - `.claude/skills/powershell-development/security.md` - OWASP, Trust Boundaries

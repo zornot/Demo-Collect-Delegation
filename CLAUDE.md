@@ -1,12 +1,12 @@
-# Demo Collect Delegation
+# [Nom du Projet]
 
 ## Context
 - **Stack**: PowerShell 7.2+, Windows Terminal
-- **Purpose**: Récupération de toutes les délégations existantes sur une organisation Exchange Online
-- **Author**: zornot
+- **Purpose**: [Description courte du projet]
+- **Author**: [Nom]
 
 ## Project Structure
-- Script principal : `./Get-ExchangeDelegation.ps1`
+- Script principal : `./Script.ps1`
 - Modules : `Modules/`
 - Tests : `Tests/`
 - Configuration : `Config/Settings.json`
@@ -31,6 +31,9 @@
 - `/session-save` - Save current state
 - `/session-end` - Final save + summary before /clear
 
+### Maintenance
+- `/update-assistant <template-path> [--dry-run]` - Update .claude/ from template source
+
 ## Agents
 - `code-reviewer` - Reviews PowerShell code for compliance
 - `test-writer` - Writes Pester tests following TDD
@@ -48,6 +51,7 @@ Skills actives automatiquement par Claude selon leur description :
 | `development-workflow` | Git, TDD, workflow issues, anonymisation donnees |
 | `code-audit` | Methodologie audit 6 phases, anti-faux-positifs, metriques SQALE |
 | `progress-tracking` | Templates issues README et SESSION-STATE |
+| `knowledge-verification` | Verification temporelle pour technos evolutives |
 
 ## Workflow
 

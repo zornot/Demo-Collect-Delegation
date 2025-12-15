@@ -32,6 +32,12 @@ Pour CHAQUE finding potentiel :
 
 > **Un finding non prouve est un faux positif potentiel.**
 
+### Verification Temporelle des Connaissances
+
+Voir `.claude/skills/knowledge-verification/SKILL.md` pour le protocole complet.
+
+> Pour technos evolutives, invoquer @tech-researcher.
+
 ### Severites
 
 | Symbole | Niveau | Action |

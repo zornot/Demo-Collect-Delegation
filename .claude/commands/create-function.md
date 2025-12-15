@@ -45,6 +45,10 @@ Lire ces fichiers avant de creer la fonction :
 1. `.claude/skills/powershell-development/naming.md` - Nommage Verb-Noun, nouns SINGULIERS
 2. `.claude/skills/powershell-development/parameters.md` - Validation des parametres
 
+## Note : Technologies Evolutives
+
+Si la fonction utilise des APIs susceptibles d'avoir evolue depuis la date de coupure, consulter `.claude/skills/knowledge-verification/SKILL.md` pour verifier les evolutions recentes.
+
 ## Regles de Nommage
 
 1. **Verbe** : Doit provenir de la liste approuvee `Get-Verb`

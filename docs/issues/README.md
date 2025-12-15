@@ -1,6 +1,4 @@
-# Issues - [Nom du Projet]
-
-> Voir docs/issues/README.example.md pour un exemple complet.
+# Issues - Demo Collect Delegation
 
 ## Workflow
 
@@ -17,12 +15,27 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
+| - | Aucune issue en cours | - |
 
 ## Issues Terminees
 
-| ID | Titre | Date |
-|----|-------|------|
+| ID | Titre | Date | GitHub |
+|----|-------|------|--------|
+| FEAT-003 | Colonne IsOrphan pour delegations orphelines | 2025-12-15 | #6 |
+| FEAT-004 | Option -OrphansOnly pour export filtre | 2025-12-15 | #7 |
+| FEAT-005 | Option -IncludeLastLogon | 2025-12-15 | #8 |
+| FEAT-007 | Implementation Settings.json | 2025-12-15 | local |
+| BUG-001 | Retention days hardcode (fix) | 2025-12-15 | local |
+| FIX-002 | Calendrier multilingue | 2025-12-15 | #4 |
+
+## Issues Abandonnees
+
+| ID | Titre | Raison |
+|----|-------|--------|
+| PERF-001 | Parallelisation collecte | Isolation runspaces Exchange incompatible |
+| FEAT-006 | TrusteeLastLogon via Graph API | Requiert Azure AD P1 (~150 USD/mois) |
+| DRY-001 | Optimisation AddRange | AddRange incompatible List[PSCustomObject] |
 
 ---
 
-*Genere par /init-project*
+*Derniere mise a jour : 2025-12-15*

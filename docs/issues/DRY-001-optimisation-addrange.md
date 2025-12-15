@@ -175,7 +175,7 @@ Labels : dry faible script-principal effort-15min
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | - (local only) |
+| GitHub Issue | #9 |
 | Statut | **ABANDONNEE** |
 | Branche | - |
 | Date abandon | 2025-12-15 |

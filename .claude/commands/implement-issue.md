@@ -75,6 +75,9 @@ Pour chaque etape d'IMPLEMENTATION :
 2. **Appliquer APRES** : Remplacer le code AVANT par le code APRES
 3. **Cocher l'etape** : Marquer comme fait dans l'issue
 
+> **ATTENTION Issues Parasites** : Si vous voyez d'autres fichiers `docs/issues/*.md`
+> dans `git status`, verifiez leur statut. Ne commitez que l'issue en cours.
+
 ## Etape 7 : Finalisation
 
 Apres toutes les modifications :
@@ -85,6 +88,26 @@ Apres toutes les modifications :
    - Modifier `docs/issues/$ARGUMENTS.md`
    - Changer Statut : IN_PROGRESS → RESOLVED
    - Ajouter Commit Resolution : [hash]
+
+2.5. **Verification issues stagees** (OBLIGATOIRE avant commit) :
+
+   Avant de commiter, verifier les fichiers `docs/issues/*.md` stages :
+
+   ```bash
+   git diff --cached --name-only | grep "docs/issues/"
+   ```
+
+   Pour CHAQUE issue trouvee :
+   - Si c'est `$ARGUMENTS.md` : OK (issue en cours)
+   - Si c'est une AUTRE issue : Verifier son statut
+
+   **Regle** : Ne JAMAIS commiter une issue avec statut DRAFT ou OPEN
+   sauf si c'est l'issue en cours d'implementation.
+
+   Si issue non liee detectee :
+   ```bash
+   git reset docs/issues/[issue-non-liee].md
+   ```
 
 3. **Commit atomique** (inclut l'issue mise a jour) :
    ```bash

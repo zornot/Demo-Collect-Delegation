@@ -77,12 +77,24 @@ Eviter le sur-engineering :
 - Documentation pour code auto-explicatif
 - Backwards-compatibility pour code non publie
 
+## Regle Critique : Modules Existants
+
+**AVANT de coder une fonction UI/logging/connexion, verifier `Modules/` du projet.**
+
+```powershell
+# Lister les modules disponibles
+Get-ChildItem -Path "$PSScriptRoot\Modules" -Directory
+```
+
+NE JAMAIS recreer une fonction qui existe dans un module. Voir [project-modules.md](project-modules.md).
+
 ## Detailed Standards
 
 Pour les details complets, voir les fichiers dans ce skill :
 
 | Domaine | Fichier |
 |---------|---------|
+| **Modules projet** | [project-modules.md](project-modules.md) |
 | Nommage complet | [naming.md](naming.md) |
 | Parametres & validation | [parameters.md](parameters.md) |
 | Gestion erreurs | [errors.md](errors.md) |

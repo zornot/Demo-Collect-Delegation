@@ -254,7 +254,7 @@ Pour ameliorer les performances sans parallelisation :
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | - |
+| GitHub Issue | #10 |
 | Statut | **ABANDONNEE** |
 | Branche | - |
 | Date abandon | 2025-12-15 |
