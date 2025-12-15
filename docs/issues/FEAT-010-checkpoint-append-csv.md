@@ -1,4 +1,4 @@
-# [~] [FEAT-010] Mode append CSV pour reprise checkpoint - Effort: 2h
+# [x] [FEAT-010] Mode append CSV pour reprise checkpoint - Effort: 2h
 
 ## PROBLEME
 Actuellement, chaque execution du script cree un nouveau fichier CSV avec un nouveau timestamp.
@@ -112,11 +112,11 @@ Si le CSV est manquant, le checkpoint est invalide et une nouvelle collecte comm
 ## VALIDATION
 
 ### Criteres d'Acceptation
-- [ ] Reprise utilise le CSV existant (meme fichier)
-- [ ] Nouvelles delegations ajoutees sans doublon de header
-- [ ] Si CSV manquant, nouvelle collecte (pas d'erreur)
-- [ ] Collecte complete = checkpoint supprime, CSV complet
-- [ ] -NoResume force nouveau CSV
+- [x] Reprise utilise le CSV existant (meme fichier)
+- [x] Nouvelles delegations ajoutees sans doublon de header
+- [x] Si CSV manquant, nouvelle collecte (pas d'erreur)
+- [x] Collecte complete = checkpoint supprime, CSV complet
+- [x] -NoResume force nouveau CSV
 
 ### Tests Manuels
 ```powershell
@@ -137,11 +137,11 @@ Remove-Item .\Output\ExchangeDelegations_*.csv
 ```
 
 ## CHECKLIST
-- [ ] Reorganisation generation chemin CSV
-- [ ] Mode append sans header
-- [ ] Validation CSV existant
-- [ ] Tests manuels passes
-- [ ] Code review
+- [x] Reorganisation generation chemin CSV
+- [x] Mode append sans header
+- [x] Validation CSV existant
+- [x] Tests manuels passes
+- [x] Code review
 
 Labels : feature moyenne checkpoint csv
 
@@ -151,9 +151,10 @@ Labels : feature moyenne checkpoint csv
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | DRAFT |
+| GitHub Issue | local |
+| Statut | RESOLVED |
 | Branche | feature/FEAT-010-checkpoint-append-csv |
+| Commit | (avec REFACTOR-004) |
 
 ---
 
