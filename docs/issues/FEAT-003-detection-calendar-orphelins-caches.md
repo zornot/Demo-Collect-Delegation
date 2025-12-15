@@ -1,20 +1,21 @@
-# [~] FEAT-003 Detecter les permissions calendrier orphelines cachees | Effort: 2h
+# [~] FEAT-003 Colonne IsOrphan pour toutes les delegations orphelines | Effort: 2h
 
 ## PROBLEME
 
-Les permissions calendrier peuvent etre orphelines meme si elles affichent un nom (pas un SID). Exchange cache le `DisplayName` dans la permission au moment de sa creation. Apres suppression du compte, le nom reste affiche mais `ADRecipient` est null. Ces permissions ne sont pas detectees par le script actuel.
+Les permissions orphelines n'etaient pas marquees de maniere coherente dans l'export CSV :
+- **SID orphelins** (S-1-5-21-*) : Detectes pour cleanup mais pas marques IsOrphan
+- **Noms caches** (ex: "Carol PINKUS") : Non detectes car `ADRecipient` est null mais nom affiche
 
 ## LOCALISATION
 
-- Fichier : Get-ExchangeDelegation.ps1:L453-512
-- Fonction : Get-MailboxCalendarDelegation()
+- Fichier : Get-ExchangeDelegation.ps1
+- Fonctions : Get-MailboxFullAccessDelegation(), Get-MailboxSendAsDelegation(), Get-MailboxSendOnBehalfDelegation(), Get-MailboxCalendarDelegation()
 - Fonction : New-DelegationRecord()
-- Fonction : Remove-OrphanedDelegation()
 
 ## OBJECTIF
 
 1. Ajouter colonne `IsOrphan` dans l'export CSV
-2. Detecter permissions calendrier avec `ADRecipient = $null`
+2. Marquer IsOrphan=True pour tous les orphelins (SID et noms caches)
 3. Permettre suppression via `-CleanupOrphans -Force`
 4. Logger ces permissions meme sans action
 
@@ -128,18 +129,33 @@ $cachedOrphans = ($orphanDelegations | Where-Object { $_.IsOrphan -and $_.Truste
 Write-Log "Orphelins: $($orphanDelegations.Count) total (SID: $sidOrphans, Noms caches: $cachedOrphans)" -Level INFO
 ```
 
+### Etape 5 : Etendre IsOrphan a FullAccess/SendAs/SendOnBehalf - 15min (AJOUT)
+Fichier : Get-ExchangeDelegation.ps1
+
+Ajouter detection SID dans les 3 autres fonctions de collecte :
+
+```powershell
+# Dans Get-MailboxFullAccessDelegation, Get-MailboxSendAsDelegation, Get-MailboxSendOnBehalfDelegation
+$isOrphan = $trusteeInfo.Email -match '^S-1-5-21-'
+
+$delegationRecord = New-DelegationRecord `
+    # ... autres parametres ...
+    -IsOrphan $isOrphan
+```
+
 ---
 
 ## VALIDATION
 
 ### Criteres d'Acceptation
 
-- [ ] Export CSV contient colonne `IsOrphan` (True/False)
-- [ ] Permissions calendrier avec ADRecipient=null ont IsOrphan=True
-- [ ] `-CleanupOrphans` liste les permissions orphelines cachees (ex: Carol PINKUS)
-- [ ] `-CleanupOrphans -Force` supprime ces permissions
-- [ ] Log differencie SID vs noms caches
-- [ ] Pas de regression sur SID orphelins existants
+- [x] Export CSV contient colonne `IsOrphan` (True/False)
+- [x] Permissions calendrier avec ADRecipient=null ont IsOrphan=True
+- [x] Permissions FullAccess/SendAs/SendOnBehalf avec SID ont IsOrphan=True
+- [x] `-CleanupOrphans` liste les permissions orphelines cachees (ex: Carol PINKUS)
+- [x] `-CleanupOrphans -Force` supprime ces permissions
+- [x] Log differencie SID vs noms caches
+- [x] Pas de regression sur SID orphelins existants
 
 ---
 
@@ -151,16 +167,16 @@ Write-Log "Orphelins: $($orphanDelegations.Count) total (SID: $sidOrphans, Noms 
 ## POINTS ATTENTION
 
 - 1 fichier modifie
-- ~50 lignes modifiees
+- ~60 lignes modifiees (4 fonctions)
 - Risques : Changement format CSV (nouvelle colonne) - non breaking
 
 ## CHECKLIST
 
-- [ ] Code AVANT = code reel verifie
-- [ ] Tests passent
-- [ ] Code review
+- [x] Code AVANT = code reel verifie
+- [x] Tests manuels effectues
+- [x] Code review
 
-Labels : feat moyenne calendar orphan
+Labels : feat moyenne delegation orphan
 
 ---
 
