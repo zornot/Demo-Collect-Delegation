@@ -399,6 +399,7 @@ function New-DelegationRecord {
         [string]$FolderPath = '',
         [bool]$IsOrphan = $false,
         [bool]$IsInactive = $false,
+        [string]$MailboxType = '',
         [string]$MailboxLastLogon = ''
     )
 
@@ -412,6 +413,7 @@ function New-DelegationRecord {
         FolderPath         = $FolderPath
         IsOrphan           = $IsOrphan
         IsInactive         = $IsInactive
+        MailboxType        = $MailboxType
         MailboxLastLogon   = $MailboxLastLogon
         CollectedAt        = $script:CollectionTimestamp
     }
@@ -720,7 +722,7 @@ try {
     Write-Status -Type Info -Message "Types inclus: $($mailboxTypes -join ', ')" -Indent 1
 
     # Recuperation des mailboxes actives
-    $allMailboxes = Get-EXOMailbox -ResultSize Unlimited -RecipientTypeDetails $mailboxTypes -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
+    $allMailboxes = Get-EXOMailbox -ResultSize Unlimited -RecipientTypeDetails $mailboxTypes -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, RecipientTypeDetails, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
     $activeCount = $allMailboxes.Count
     Write-Status -Type Success -Message "$activeCount mailboxes actives trouvees" -Indent 1
 
@@ -728,7 +730,7 @@ try {
     $script:InactiveMailboxIds = @()
     if ($IncludeInactive) {
         Write-Status -Type Info -Message "Recuperation des mailboxes inactives..." -Indent 1
-        $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
+        $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, RecipientTypeDetails, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
         $script:InactiveMailboxIds = $inactiveMailboxes | ForEach-Object { $_.ExchangeObjectId }
         $allMailboxes = @($allMailboxes) + @($inactiveMailboxes)
         Write-Status -Type Success -Message "$($inactiveMailboxes.Count) mailboxes inactives ajoutees" -Indent 1
@@ -807,7 +809,7 @@ try {
         $csvHeader = @(
             'MailboxEmail', 'MailboxDisplayName', 'TrusteeEmail', 'TrusteeDisplayName',
             'DelegationType', 'AccessRights', 'FolderPath', 'IsOrphan',
-            'IsInactive', 'MailboxLastLogon', 'CollectedAt'
+            'IsInactive', 'MailboxType', 'MailboxLastLogon', 'CollectedAt'
         )
         $csvHeader -join ',' | Set-Content -Path $exportFilePath -Encoding UTF8
         Write-Log "CSV initialise: $exportFilePath" -Level DEBUG -NoConsole
@@ -844,6 +846,9 @@ try {
             # Verifier si mailbox inactive
             $isInactive = $mailbox.ExchangeObjectId -in $script:InactiveMailboxIds
 
+            # Type de mailbox (UserMailbox, SharedMailbox, RoomMailbox, etc.)
+            $mailboxType = $mailbox.RecipientTypeDetails
+
             # Collecter toutes les delegations de cette mailbox
             $mailboxDelegations = [System.Collections.Generic.List[PSCustomObject]]::new()
 
@@ -853,6 +858,7 @@ try {
             foreach ($delegation in $fullAccessDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
+                $delegation.MailboxType = $mailboxType
                 $mailboxDelegations.Add($delegation)
             }
 
@@ -862,6 +868,7 @@ try {
             foreach ($delegation in $sendAsDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
+                $delegation.MailboxType = $mailboxType
                 $mailboxDelegations.Add($delegation)
             }
 
@@ -871,6 +878,7 @@ try {
             foreach ($delegation in $sendOnBehalfDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
+                $delegation.MailboxType = $mailboxType
                 $mailboxDelegations.Add($delegation)
             }
 
@@ -880,6 +888,7 @@ try {
             foreach ($delegation in $calendarDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
+                $delegation.MailboxType = $mailboxType
                 $mailboxDelegations.Add($delegation)
             }
 
@@ -889,6 +898,7 @@ try {
             foreach ($delegation in $forwardingDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
                 $delegation.IsInactive = $isInactive
+                $delegation.MailboxType = $mailboxType
                 $mailboxDelegations.Add($delegation)
             }
 
