@@ -29,6 +29,7 @@
     Par defaut en mode simulation (WhatIf). Utiliser -Force pour supprimer reellement.
 .PARAMETER OrphansOnly
     Exporter uniquement les delegations orphelines (IsOrphan = True).
+    Collecte les mailbox selon -IncludeSharedMailbox/-IncludeRoomMailbox (UserMailbox par defaut).
     Utile pour analyser ou nettoyer les permissions obsoletes.
 .PARAMETER IncludeLastLogon
     Ajouter la date de derniere connexion de la mailbox au CSV.
@@ -61,6 +62,9 @@
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -CleanupOrphans -Force -IncludeSharedMailbox
     Collecte User + Shared et supprime reellement les delegations orphelines.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -OrphansOnly
+    Exporte uniquement les delegations orphelines des UserMailbox.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -OrphansOnly -IncludeSharedMailbox
     Exporte uniquement les delegations orphelines des User + Shared.
