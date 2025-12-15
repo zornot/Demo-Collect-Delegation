@@ -216,29 +216,7 @@ $script:SystemAccountPatterns = @(
 
 #region UI Functions
 
-function Write-Status {
-    param(
-        [ValidateSet('Success', 'Error', 'Warning', 'Info', 'Action', 'WhatIf')]
-        [string]$Type,
-        [string]$Message,
-        [int]$Indent = 0
-    )
-
-    $statusConfig = switch ($Type) {
-        'Success' { @{ Bracket = '[+]'; Color = 'Green' } }
-        'Error' { @{ Bracket = '[-]'; Color = 'Red' } }
-        'Warning' { @{ Bracket = '[!]'; Color = 'Yellow' } }
-        'Info' { @{ Bracket = '[i]'; Color = 'Cyan' } }
-        'Action' { @{ Bracket = '[>]'; Color = 'White' } }
-        'WhatIf' { @{ Bracket = '[?]'; Color = 'DarkGray' } }
-    }
-
-    $indentSpaces = "  " * $Indent
-    Write-Host "$indentSpaces$($statusConfig.Bracket) " -NoNewline -ForegroundColor $statusConfig.Color
-    Write-Host $Message -ForegroundColor $statusConfig.Color
-}
-
-# Note: Write-ConsoleBanner est fournie par le module ConsoleUI
+# Note: Write-Status et Write-ConsoleBanner sont fournies par le module ConsoleUI
 
 #endregion UI Functions
 
@@ -753,7 +731,7 @@ try {
         # Progression tous les 10 elements ou a la fin
         if ($mailboxIndex % 10 -eq 0 -or $mailboxIndex -eq $mailboxCount) {
             $percent = [math]::Round(($mailboxIndex / $mailboxCount) * 100)
-            Write-Host "`r  [>] Analyse mailboxes : $mailboxIndex/$mailboxCount ($percent%)" -NoNewline -ForegroundColor White
+            Write-Status -Type Action -Message "Analyse mailboxes : $mailboxIndex/$mailboxCount ($percent%)" -Indent 1 -NoNewline -CarriageReturn
         }
 
         # Collecter LastLogon si demande

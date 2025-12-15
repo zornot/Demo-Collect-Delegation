@@ -118,7 +118,7 @@ function Write-BoxBorder {
     )
 
     $chars = switch ($Position) {
-        'Top'    { @{ Left = '┌'; Right = '┐' } }
+        'Top' { @{ Left = '┌'; Right = '┐' } }
         'Middle' { @{ Left = '├'; Right = '┤' } }
         'Bottom' { @{ Left = '└'; Right = '┘' } }
     }
@@ -534,13 +534,13 @@ function Write-MenuBox {
 
         [Parameter(Mandatory)]
         [ValidateScript({
-            foreach ($opt in $_) {
-                if (-not ($opt -is [hashtable] -and $opt.ContainsKey('Key') -and $opt.ContainsKey('Text'))) {
-                    throw "Chaque option doit etre un hashtable avec les cles 'Key' et 'Text'. Recu: $($opt.GetType().Name)"
+                foreach ($opt in $_) {
+                    if (-not ($opt -is [hashtable] -and $opt.ContainsKey('Key') -and $opt.ContainsKey('Text'))) {
+                        throw "Chaque option doit etre un hashtable avec les cles 'Key' et 'Text'. Recu: $($opt.GetType().Name)"
+                    }
                 }
-            }
-            $true
-        }, ErrorMessage = "Format attendu: @(@{Key='A'; Text='Option A'}, ...)")]
+                $true
+            }, ErrorMessage = "Format attendu: @(@{Key='A'; Text='Option A'}, ...)")]
         [hashtable[]]$Options
     )
 
@@ -941,9 +941,9 @@ function Write-CollectionModeBox {
     foreach ($line in $lines) {
         $lineLen = switch ($line.Type) {
             'option' { 2 + 4 + $line.Text.Length }
-            'desc'   { 2 + 4 + $line.Text.Length }
+            'desc' { 2 + 4 + $line.Text.Length }
             'detail' { 2 + 4 + 2 + $line.Text.Length }
-            default  { 0 }
+            default { 0 }
         }
         $maxContentLen = [Math]::Max($maxContentLen, $lineLen)
     }
@@ -1226,6 +1226,71 @@ function Update-CategorySelection {
     return $CurrentSelection
 }
 
+function Write-Status {
+    <#
+    .SYNOPSIS
+        Affiche un message de statut avec icone bracket coloree.
+    .DESCRIPTION
+        Affiche des messages console avec icones standardisees :
+        [+] Green (Success), [-] Red (Error), [!] Yellow (Warning),
+        [i] Cyan (Info), [>] White (Action), [?] DarkGray (WhatIf)
+    .PARAMETER Type
+        Type de statut : Success, Error, Warning, Info, Action, WhatIf
+    .PARAMETER Message
+        Message a afficher
+    .PARAMETER Indent
+        Niveau d'indentation (2 espaces par niveau)
+    .PARAMETER NoNewline
+        Ne pas ajouter de retour a la ligne
+    .PARAMETER CarriageReturn
+        Ajouter un retour chariot au debut (pour progression)
+    .EXAMPLE
+        Write-Status -Type Success -Message "Operation terminee"
+    .EXAMPLE
+        Write-Status -Type Action -Message "Progression 50%" -Indent 1 -NoNewline -CarriageReturn
+    #>
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('Success', 'Error', 'Warning', 'Info', 'Action', 'WhatIf')]
+        [string]$Type,
+
+        [Parameter(Mandatory)]
+        [string]$Message,
+
+        [Parameter()]
+        [int]$Indent = 0,
+
+        [Parameter()]
+        [switch]$NoNewline,
+
+        [Parameter()]
+        [switch]$CarriageReturn
+    )
+
+    $statusConfig = switch ($Type) {
+        'Success' { @{ Bracket = '[+]'; Color = 'Green' } }
+        'Error' { @{ Bracket = '[-]'; Color = 'Red' } }
+        'Warning' { @{ Bracket = '[!]'; Color = 'Yellow' } }
+        'Info' { @{ Bracket = '[i]'; Color = 'Cyan' } }
+        'Action' { @{ Bracket = '[>]'; Color = 'White' } }
+        'WhatIf' { @{ Bracket = '[?]'; Color = 'DarkGray' } }
+    }
+
+    $indentSpaces = "  " * $Indent
+    $prefix = if ($CarriageReturn) { "`r" } else { "" }
+    $output = "$prefix$indentSpaces$($statusConfig.Bracket) $Message"
+
+    if ($NoNewline) {
+        Write-Host $output -NoNewline -ForegroundColor $statusConfig.Color
+    }
+    else {
+        Write-Host "$indentSpaces$($statusConfig.Bracket) " -NoNewline -ForegroundColor $statusConfig.Color
+        Write-Host $Message -ForegroundColor $statusConfig.Color
+    }
+}
+
 #endregion Public Functions
 
 # Export des fonctions publiques
@@ -1240,4 +1305,5 @@ Export-ModuleMember -Function @(
     'Write-CollectionModeBox'
     'Write-CategorySelectionMenu'
     'Update-CategorySelection'
+    'Write-Status'
 )
