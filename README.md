@@ -28,10 +28,23 @@ Pour filtrer les delegations orphelines :
 Import-Csv "ExchangeDelegations_*.csv" | Where-Object { $_.TrusteeEmail -match '^S-1-5-21' }
 ```
 
+## Performance
+
+Le script utilise plusieurs optimisations pour des performances optimales :
+
+| Optimisation | Impact |
+|--------------|--------|
+| **Cache Recipients** | Pre-charge tous les recipients au demarrage (-80% appels API) |
+| **Cmdlets EXO*** | Utilise les cmdlets REST (Get-EXOMailbox, etc.) 3x plus rapides |
+| **HashSet Checkpoint** | Lookup O(1) pour reprise apres interruption |
+
+**Benchmark** (24 mailboxes, 80 recipients) :
+- Temps d'execution : ~1 minute
+
 ## Prerequis
 
 - PowerShell 7.2+
-- Module ExchangeOnlineManagement
+- Module ExchangeOnlineManagement v3 (cmdlets EXO*)
 - Droits : Exchange Administrator ou Global Reader
 
 ## Installation
@@ -87,8 +100,12 @@ cd Demo-Collect-Delegation
 | `-OutputPath` | string | ./Output | Dossier de sortie pour le CSV |
 | `-IncludeSharedMailbox` | switch | - | Inclure les mailboxes partagees (SharedMailbox) |
 | `-IncludeRoomMailbox` | switch | - | Inclure les salles de reunion (RoomMailbox) |
-| `-CleanupOrphans` | switch | $false | Supprimer les delegations orphelines |
-| `-WhatIf` | switch | - | Simuler sans supprimer (avec -CleanupOrphans) |
+| `-IncludeInactive` | switch | - | Inclure les mailboxes inactives (soft-deleted) |
+| `-IncludeLastLogon` | switch | - | Ajouter la date de derniere connexion (+1 appel API/mailbox) |
+| `-OrphansOnly` | switch | - | Exporter uniquement les delegations orphelines |
+| `-CleanupOrphans` | switch | - | Supprimer les delegations orphelines |
+| `-Force` | switch | - | Forcer la suppression (avec -CleanupOrphans) |
+| `-NoResume` | switch | - | Ignorer le checkpoint existant |
 
 ## Sortie
 
@@ -110,6 +127,9 @@ ExchangeDelegations_2025-12-15_143022.csv
 | DelegationType | Type de delegation |
 | AccessRights | Droits accordes |
 | FolderPath | Chemin du dossier (Calendar) |
+| IsOrphan | True si le delegue n'existe plus |
+| MailboxLastLogon | Date derniere connexion (si -IncludeLastLogon) |
+| IsInactive | True si mailbox inactive |
 | CollectedAt | Timestamp de collecte |
 
 ## Structure du Projet

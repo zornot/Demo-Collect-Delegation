@@ -509,7 +509,8 @@ function Get-MailboxFullAccessDelegation {
     $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
 
     try {
-        $permissions = Get-EXOMailboxPermission -Identity $Mailbox.Identity -ErrorAction Stop |
+        # Utiliser PrimarySmtpAddress (best practice MS) au lieu de Identity
+        $permissions = Get-EXOMailboxPermission -Identity $Mailbox.PrimarySmtpAddress -ErrorAction Stop |
             Where-Object {
                 $_.AccessRights -contains 'FullAccess' -and
                 -not $_.IsInherited -and
