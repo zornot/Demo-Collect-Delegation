@@ -67,6 +67,16 @@ cd Demo-Collect-Delegation
 .\Get-ExchangeDelegation.ps1 -IncludeSharedMailbox:$false
 ```
 
+### Nettoyage des Orphelins
+
+```powershell
+# Simuler la suppression des delegations orphelines (sans supprimer)
+.\Get-ExchangeDelegation.ps1 -CleanupOrphans -WhatIf
+
+# Supprimer les delegations orphelines
+.\Get-ExchangeDelegation.ps1 -CleanupOrphans
+```
+
 ### Parametres
 
 | Parametre | Type | Defaut | Description |
@@ -74,6 +84,8 @@ cd Demo-Collect-Delegation
 | `-OutputPath` | string | ./Output | Dossier de sortie pour le CSV |
 | `-IncludeSharedMailbox` | switch | $true | Inclure les mailboxes partagees |
 | `-IncludeRoomMailbox` | switch | $false | Inclure les salles de reunion |
+| `-CleanupOrphans` | switch | $false | Supprimer les delegations orphelines |
+| `-WhatIf` | switch | - | Simuler sans supprimer (avec -CleanupOrphans) |
 
 ## Sortie
 

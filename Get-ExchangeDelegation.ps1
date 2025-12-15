@@ -13,6 +13,7 @@
     - Forwarding : Regles de transfert SMTP
 
     Les permissions systeme (NT AUTHORITY, SELF, etc.) sont exclues.
+    Les delegations orphelines (SID S-1-5-21-*) sont detectees et peuvent etre nettoyees.
     Export vers un fichier CSV unique consolide.
 .PARAMETER OutputPath
     Chemin du dossier de sortie pour le fichier CSV.
@@ -23,16 +24,25 @@
 .PARAMETER IncludeRoomMailbox
     Inclure les salles de reunion dans la collecte.
     Defaut : $false
+.PARAMETER CleanupOrphans
+    Supprimer les delegations orphelines (trustees supprimes).
+    Utiliser avec -WhatIf pour simuler sans supprimer.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1
     Collecte toutes les delegations et exporte dans Output/.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -OutputPath "C:\Reports" -IncludeRoomMailbox
     Collecte avec les salles de reunion, export dans C:\Reports.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -CleanupOrphans -WhatIf
+    Simule la suppression des delegations orphelines (sans supprimer).
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -CleanupOrphans
+    Collecte et supprime les delegations orphelines.
 .NOTES
     Author: zornot
     Date: 2025-12-15
-    Version: 1.0.0
+    Version: 1.1.0
 
     Prerequis:
     - Module ExchangeOnlineManagement installe
@@ -40,7 +50,7 @@
     - Droits: Exchange Administrator ou Global Reader
 #>
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory = $false)]
     [string]$OutputPath,
@@ -49,7 +59,10 @@ param(
     [switch]$IncludeSharedMailbox = $true,
 
     [Parameter(Mandatory = $false)]
-    [switch]$IncludeRoomMailbox = $false
+    [switch]$IncludeRoomMailbox = $false,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$CleanupOrphans
 )
 
 #region Configuration
@@ -58,7 +71,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$script:Version = "1.0.0"
+$script:Version = "1.1.0"
 $script:CollectionTimestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz"
 
 # OutputPath par defaut : ./Output
@@ -214,6 +227,74 @@ function Resolve-TrusteeInfo {
             Resolved    = $false
         }
     }
+}
+
+function Remove-OrphanedDelegation {
+    <#
+    .SYNOPSIS
+        Supprime une delegation orpheline.
+    .DESCRIPTION
+        Supprime une delegation vers un trustee supprime (SID orphelin).
+        Supporte -WhatIf pour simulation.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]
+        [PSCustomObject]$Delegation
+    )
+
+    $mailbox = $Delegation.MailboxEmail
+    $trustee = $Delegation.TrusteeEmail
+    $type = $Delegation.DelegationType
+
+    $description = "$type : $mailbox -> $trustee"
+
+    if ($PSCmdlet.ShouldProcess($description, "Supprimer delegation orpheline")) {
+        try {
+            switch ($type) {
+                'FullAccess' {
+                    Remove-MailboxPermission -Identity $mailbox -User $trustee `
+                        -AccessRights FullAccess -Confirm:$false -ErrorAction Stop
+                }
+                'SendAs' {
+                    Remove-RecipientPermission -Identity $mailbox -Trustee $trustee `
+                        -AccessRights SendAs -Confirm:$false -ErrorAction Stop
+                }
+                'SendOnBehalf' {
+                    Set-Mailbox -Identity $mailbox -GrantSendOnBehalfTo @{Remove = $trustee } `
+                        -ErrorAction Stop
+                }
+                'Calendar' {
+                    $calendarPath = "$mailbox:\Calendar"
+                    Remove-MailboxFolderPermission -Identity $calendarPath `
+                        -User $trustee -Confirm:$false -ErrorAction Stop
+                }
+                'Forwarding' {
+                    # Forwarding ne peut pas etre supprime via SID
+                    Write-Log "Forwarding orphelin ignore (suppression manuelle requise): $mailbox" -Level WARNING
+                    return $false
+                }
+                default {
+                    Write-Log "Type de delegation inconnu: $type" -Level WARNING
+                    return $false
+                }
+            }
+
+            Write-Host "[+] " -NoNewline -ForegroundColor Green
+            Write-Host "Supprime: $description"
+            Write-Log "Delegation orpheline supprimee: $description" -Level INFO
+            return $true
+        }
+        catch {
+            Write-Host "[-] " -NoNewline -ForegroundColor Red
+            Write-Host "Echec: $description - $($_.Exception.Message)"
+            Write-Log "Erreur suppression delegation: $description - $($_.Exception.Message)" -Level WARNING
+            return $false
+        }
+    }
+
+    return $false
 }
 
 function New-DelegationRecord {
@@ -561,6 +642,45 @@ try {
         Write-Log "Aucune delegation a exporter" -Level WARNING
     }
 
+    # Nettoyage des delegations orphelines (si -CleanupOrphans)
+    $orphanCount = 0
+    $cleanedCount = 0
+
+    if ($CleanupOrphans) {
+        # Identifier les orphelins (SID S-1-5-21-*)
+        $orphanedDelegations = $allDelegations | Where-Object { $_.TrusteeEmail -match '^S-1-5-21' }
+        $orphanCount = $orphanedDelegations.Count
+
+        if ($orphanCount -gt 0) {
+            Write-Host ""
+            Write-Status -Type Action -Message "Nettoyage des delegations orphelines..."
+            Write-Status -Type Info -Message "$orphanCount delegation(s) orpheline(s) detectee(s)" -Indent 1
+
+            if ($WhatIfPreference) {
+                Write-Status -Type Warning -Message "Mode simulation (-WhatIf) - aucune suppression" -Indent 1
+            }
+
+            foreach ($orphan in $orphanedDelegations) {
+                $removed = Remove-OrphanedDelegation -Delegation $orphan
+                if ($removed) {
+                    $cleanedCount++
+                }
+            }
+
+            Write-Host ""
+            if ($WhatIfPreference) {
+                Write-Status -Type Info -Message "Simulation: $orphanCount delegation(s) a supprimer" -Indent 1
+            }
+            else {
+                Write-Status -Type Success -Message "$cleanedCount/$orphanCount delegation(s) orpheline(s) supprimee(s)" -Indent 1
+            }
+            Write-Log "Nettoyage orphelins: $cleanedCount/$orphanCount supprimes" -Level INFO
+        }
+        else {
+            Write-Status -Type Success -Message "Aucune delegation orpheline detectee" -Indent 1
+        }
+    }
+
     # Resume final avec Write-Box du module ConsoleUI
     $summaryContent = [ordered]@{
         'Mailboxes'    = $mailboxCount
@@ -571,6 +691,11 @@ try {
         'Forwarding'   = $statsPerType.Forwarding
         'TOTAL'        = $allDelegations.Count
     }
+
+    if ($CleanupOrphans -and $orphanCount -gt 0) {
+        $summaryContent['Orphelins'] = "$cleanedCount/$orphanCount supprimes"
+    }
+
     Write-Box -Title "RESUME" -Content $summaryContent
 
     Write-Log "Collecte terminee - Total: $($allDelegations.Count) delegations" -Level SUCCESS
