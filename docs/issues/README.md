@@ -21,6 +21,7 @@
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| FEAT-008 | Parametre -IncludeInactive mailboxes | 2025-12-15 | local |
 | REFACTOR-001 | Write-Status vers module ConsoleUI | 2025-12-15 | local |
 | FEAT-003 | Colonne IsOrphan pour delegations orphelines | 2025-12-15 | #6 |
 | FEAT-004 | Option -OrphansOnly pour export filtre | 2025-12-15 | #7 |

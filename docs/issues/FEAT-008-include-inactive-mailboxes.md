@@ -113,5 +113,7 @@ Labels : feature exchange mailbox effort-30min
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # |
-| Statut | RESOLVED |
+| Statut | CLOSED |
+| Commit Resolution | ec8f1ab |
+| Date Resolution | 2025-12-15 |
 | Branche | feature/FEAT-008-include-inactive-mailboxes |
