@@ -6,7 +6,7 @@
 - **Author**: zornot
 
 ## Project Structure
-- Script principal : `./Script.ps1`
+- Script principal : `./Get-ExchangeDelegation.ps1`
 - Modules : `Modules/`
 - Tests : `Tests/`
 - Configuration : `Config/Settings.json`
