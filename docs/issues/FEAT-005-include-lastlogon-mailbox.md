@@ -199,6 +199,6 @@ Labels : feat faible export performance
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # |
-| Statut | RESOLVED |
+| GitHub Issue | #8 |
+| Statut | CLOSED |
 | Branche | feature/FEAT-005-include-lastlogon-mailbox |
