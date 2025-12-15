@@ -15,13 +15,14 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
-| BUG-003 | Condition finally trop restrictive | [~] Moyenne |
-| BUG-004 | Variable locale vs etat module | [-] Faible |
+| (aucune) | | |
 
 ## Issues Terminees
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-004 | Variable locale vs etat module | 2025-12-15 | #16 |
+| BUG-003 | Condition finally trop restrictive | 2025-12-15 | #15 |
 | BUG-002 | CsvPath non restaure depuis checkpoint | 2025-12-15 | #14 |
 | FEAT-008 | Parametre -IncludeInactive mailboxes | 2025-12-15 | local |
 | REFACTOR-001 | Write-Status vers module ConsoleUI | 2025-12-15 | local |

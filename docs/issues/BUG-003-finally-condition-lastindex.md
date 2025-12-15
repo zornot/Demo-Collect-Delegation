@@ -85,10 +85,10 @@ Labels : bug moyenne checkpoint
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres sync) |
-| Statut | RESOLVED |
+| GitHub Issue | #15 |
+| Statut | CLOSED |
 | Branche | fix/BUG-003-004-finally-checkpoint |
-| Commit | (apres merge) |
+| Commit | 2ecf2ff |
 | Note | Combine avec BUG-004 |
 
 ---
