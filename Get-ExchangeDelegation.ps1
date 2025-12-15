@@ -971,10 +971,10 @@ try {
     # Juste afficher le resultat final
     if ($totalDelegations -gt 0) {
         $exportedCount = if ($OrphansOnly) {
-            @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count
+            @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count + $existingOrphansCount
         }
         else {
-            $allDelegations.Count
+            $totalDelegations
         }
 
         Write-Status -Type Success -Message "Export: $exportFilePath ($exportedCount lignes)" -Indent 1
