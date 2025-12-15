@@ -15,12 +15,13 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
-| (aucune) | | |
+| - | - | - |
 
 ## Issues Terminees
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| FEAT-011 | Colonne MailboxType dans export CSV | 2025-12-15 | local |
 | BUG-005 | Header CSV inverse + tri checkpoint | 2025-12-15 | local |
 | BUG-004 | Variable locale vs etat module | 2025-12-15 | #16 |
 | BUG-003 | Condition finally trop restrictive | 2025-12-15 | #15 |
