@@ -165,6 +165,57 @@ function Test-IsSystemAccount {
     return $false
 }
 
+function Resolve-TrusteeInfo {
+    <#
+    .SYNOPSIS
+        Resout les informations d'un trustee de maniere robuste.
+    .DESCRIPTION
+        Gere les cas problematiques :
+        - DisplayName ambigu (plusieurs destinataires avec le meme nom)
+        - Destinataire introuvable
+        - SID orphelin
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string]$Identity
+    )
+
+    # Retourner null si vide
+    if ([string]::IsNullOrWhiteSpace($Identity)) {
+        return $null
+    }
+
+    try {
+        # Tenter la resolution standard
+        $recipient = Get-Recipient -Identity $Identity -ErrorAction Stop
+        return [PSCustomObject]@{
+            Email       = $recipient.PrimarySmtpAddress
+            DisplayName = $recipient.DisplayName
+            Resolved    = $true
+        }
+    }
+    catch {
+        $errorMessage = $_.Exception.Message
+
+        # Cas 1: Destinataire ambigu (plusieurs matches)
+        if ($errorMessage -match 'ne représente pas un destinataire unique|doesn''t represent a unique recipient') {
+            Write-Log "Trustee ambigu (plusieurs destinataires): $Identity" -Level DEBUG
+        }
+        # Cas 2: Destinataire introuvable
+        elseif ($errorMessage -match 'introuvable|couldn''t be found|not found') {
+            Write-Log "Trustee introuvable: $Identity" -Level DEBUG
+        }
+
+        # Retourner l'identite brute comme fallback
+        return [PSCustomObject]@{
+            Email       = $Identity
+            DisplayName = $Identity
+            Resolved    = $false
+        }
+    }
+}
+
 function New-DelegationRecord {
     <#
     .SYNOPSIS
@@ -210,13 +261,13 @@ function Get-MailboxFullAccessDelegation {
             }
 
         foreach ($permission in $permissions) {
-            $trusteeInfo = Get-Recipient -Identity $permission.User -ErrorAction SilentlyContinue
+            $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.User
 
             $delegationRecord = New-DelegationRecord `
                 -MailboxEmail $Mailbox.PrimarySmtpAddress `
                 -MailboxDisplayName $Mailbox.DisplayName `
-                -TrusteeEmail ($trusteeInfo.PrimarySmtpAddress ?? $permission.User) `
-                -TrusteeDisplayName ($trusteeInfo.DisplayName ?? $permission.User) `
+                -TrusteeEmail $trusteeInfo.Email `
+                -TrusteeDisplayName $trusteeInfo.DisplayName `
                 -DelegationType 'FullAccess' `
                 -AccessRights 'FullAccess'
 
@@ -247,13 +298,13 @@ function Get-MailboxSendAsDelegation {
             }
 
         foreach ($permission in $permissions) {
-            $trusteeInfo = Get-Recipient -Identity $permission.Trustee -ErrorAction SilentlyContinue
+            $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.Trustee
 
             $delegationRecord = New-DelegationRecord `
                 -MailboxEmail $Mailbox.PrimarySmtpAddress `
                 -MailboxDisplayName $Mailbox.DisplayName `
-                -TrusteeEmail ($trusteeInfo.PrimarySmtpAddress ?? $permission.Trustee) `
-                -TrusteeDisplayName ($trusteeInfo.DisplayName ?? $permission.Trustee) `
+                -TrusteeEmail $trusteeInfo.Email `
+                -TrusteeDisplayName $trusteeInfo.DisplayName `
                 -DelegationType 'SendAs' `
                 -AccessRights 'SendAs'
 
@@ -282,13 +333,13 @@ function Get-MailboxSendOnBehalfDelegation {
 
     foreach ($trustee in $Mailbox.GrantSendOnBehalfTo) {
         try {
-            $trusteeInfo = Get-Recipient -Identity $trustee -ErrorAction SilentlyContinue
+            $trusteeInfo = Resolve-TrusteeInfo -Identity $trustee
 
-            if ($null -ne $trusteeInfo -and -not (Test-IsSystemAccount -Identity $trusteeInfo.PrimarySmtpAddress)) {
+            if ($null -ne $trusteeInfo -and -not (Test-IsSystemAccount -Identity $trusteeInfo.Email)) {
                 $delegationRecord = New-DelegationRecord `
                     -MailboxEmail $Mailbox.PrimarySmtpAddress `
                     -MailboxDisplayName $Mailbox.DisplayName `
-                    -TrusteeEmail $trusteeInfo.PrimarySmtpAddress `
+                    -TrusteeEmail $trusteeInfo.Email `
                     -TrusteeDisplayName $trusteeInfo.DisplayName `
                     -DelegationType 'SendOnBehalf' `
                     -AccessRights 'SendOnBehalf'
