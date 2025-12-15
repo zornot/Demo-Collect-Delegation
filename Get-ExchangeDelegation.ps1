@@ -41,25 +41,32 @@
     Par defaut, le script reprend automatiquement depuis le dernier checkpoint valide.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1
-    Collecte toutes les delegations et exporte dans Output/.
+    Collecte les delegations des UserMailbox uniquement (comportement par defaut).
+    Exporte dans Output/.
 .EXAMPLE
-    .\Get-ExchangeDelegation.ps1 -OutputPath "C:\Reports" -IncludeRoomMailbox
-    Collecte avec les salles de reunion, export dans C:\Reports.
+    .\Get-ExchangeDelegation.ps1 -IncludeSharedMailbox
+    Collecte les delegations des UserMailbox + SharedMailbox.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -IncludeSharedMailbox -IncludeRoomMailbox
+    Collecte les delegations de tous les types : UserMailbox + SharedMailbox + RoomMailbox.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -IncludeSharedMailbox -IncludeInactive -IncludeLastLogon
+    Collecte complete : User + Shared + Inactive, avec date de derniere connexion.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -OutputPath "C:\Reports" -IncludeSharedMailbox
+    Collecte User + Shared, export dans C:\Reports.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -CleanupOrphans
-    Simule la suppression des delegations orphelines (mode WhatIf par defaut).
+    Collecte UserMailbox + simule la suppression des delegations orphelines (mode WhatIf).
 .EXAMPLE
-    .\Get-ExchangeDelegation.ps1 -CleanupOrphans -Force
-    Collecte et supprime reellement les delegations orphelines.
+    .\Get-ExchangeDelegation.ps1 -CleanupOrphans -Force -IncludeSharedMailbox
+    Collecte User + Shared et supprime reellement les delegations orphelines.
 .EXAMPLE
-    .\Get-ExchangeDelegation.ps1 -OrphansOnly
-    Exporte uniquement les delegations orphelines dans le CSV.
-.EXAMPLE
-    .\Get-ExchangeDelegation.ps1 -IncludeLastLogon
-    Collecte avec la date de derniere connexion de chaque mailbox.
+    .\Get-ExchangeDelegation.ps1 -OrphansOnly -IncludeSharedMailbox
+    Exporte uniquement les delegations orphelines des User + Shared.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -NoResume
-    Force une nouvelle collecte en ignorant tout checkpoint existant.
+    Force une nouvelle collecte UserMailbox en ignorant tout checkpoint existant.
 .NOTES
     Author: zornot
     Date: 2025-12-15
