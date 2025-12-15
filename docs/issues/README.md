@@ -27,6 +27,7 @@
 | FEAT-007 | Implementation Settings.json | 2025-12-15 | local |
 | BUG-001 | Retention days hardcode (fix) | 2025-12-15 | local |
 | FIX-002 | Calendrier multilingue | 2025-12-15 | #4 |
+| UI-001 | Amelioration affichage console | 2025-12-15 | local |
 
 ## Issues Abandonnees
 

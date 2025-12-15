@@ -97,6 +97,7 @@ Labels : ui moyenne logging
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| GitHub Issue | N/A (local) |
+| Statut | CLOSED |
 | Branche | feature/UI-001-amelioration-affichage-console |
+| Commit | f71bd7d |
