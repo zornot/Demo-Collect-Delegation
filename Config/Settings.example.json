@@ -23,6 +23,6 @@
     "Checkpoint": {
         "Enabled": true,
         "Interval": 50,
-        "KeyProperty": "ExchangeGuid"
+        "KeyProperty": "ExchangeObjectId"
     }
 }

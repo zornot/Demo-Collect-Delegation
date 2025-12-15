@@ -140,7 +140,7 @@ function Get-ScriptConfiguration {
         Checkpoint  = @{
             Enabled     = $true
             Interval    = 50
-            KeyProperty = "ExchangeGuid"
+            KeyProperty = "ExchangeObjectId"
         }
         _source     = "default"
     }
