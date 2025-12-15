@@ -157,5 +157,5 @@ Labels: bug performance resilience exchange-online critical
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| Statut | CLOSED |
 | Branche | fix/BUG-008-resilience-trustees-ambigus |
