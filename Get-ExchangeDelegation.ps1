@@ -98,9 +98,55 @@ $ProgressPreference = 'SilentlyContinue'
 $script:Version = "1.3.0"
 $script:CollectionTimestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz"
 
-# OutputPath par defaut : ./Output
+# Fonction de chargement configuration
+function Get-ScriptConfiguration {
+    <#
+    .SYNOPSIS
+        Charge la configuration depuis Settings.json ou retourne les defauts.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    $configPath = Join-Path $PSScriptRoot "Config\Settings.json"
+    $defaultConfig = @{
+        Application = @{
+            Name        = "Get-ExchangeDelegation"
+            Environment = "PROD"
+            LogLevel    = "Info"
+        }
+        Paths       = @{
+            Logs   = "./Logs"
+            Output = "./Output"
+        }
+        Retention   = @{
+            LogDays    = 30
+            OutputDays = 7
+        }
+        _source     = "default"
+    }
+
+    if (Test-Path $configPath) {
+        try {
+            $fileConfig = Get-Content $configPath -Raw -ErrorAction Stop | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+            $fileConfig._source = "file"
+            return $fileConfig
+        }
+        catch {
+            # Fallback silencieux, log apres Initialize-Log
+            return $defaultConfig
+        }
+    }
+
+    return $defaultConfig
+}
+
+# Charger configuration
+$script:Config = Get-ScriptConfiguration
+
+# OutputPath par defaut depuis config
 if ([string]::IsNullOrEmpty($OutputPath)) {
-    $OutputPath = Join-Path $PSScriptRoot "Output"
+    $OutputPath = Join-Path $PSScriptRoot $script:Config.Paths.Output
 }
 
 # Validation securisee du chemin (SEC-001)
@@ -119,7 +165,18 @@ if (-not (Test-Path $OutputPath)) {
 Import-Module "$PSScriptRoot\Modules\Write-Log\Modules\Write-Log\Write-Log.psm1" -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\ConsoleUI\Modules\ConsoleUI\ConsoleUI.psm1" -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\EXOConnection\Modules\EXOConnection\EXOConnection.psm1" -ErrorAction Stop
-Initialize-Log -Path "$PSScriptRoot\Logs"
+
+# Initialiser logs avec chemin depuis config
+$logPath = Join-Path $PSScriptRoot $script:Config.Paths.Logs
+Initialize-Log -Path $logPath
+
+# Log source de configuration
+if ($script:Config._source -eq "file") {
+    Write-Log "Configuration chargee depuis Config/Settings.json" -Level INFO
+}
+else {
+    Write-Log "Configuration par defaut (Settings.json absent)" -Level DEBUG
+}
 
 # Forcer WhatIf si CleanupOrphans sans Force (securite par defaut)
 if ($CleanupOrphans -and -not $Force) {

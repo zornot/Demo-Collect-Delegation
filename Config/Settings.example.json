@@ -1,10 +1,10 @@
 {
-    "_comment": "Copier vers Settings.json et remplir les vraies valeurs",
+    "_comment": "Copier vers Settings.json et adapter les valeurs selon environnement",
     "_version": "1.0.0",
 
     "Application": {
-        "Name": "[NomProjet]",
-        "Environment": "DEV",
+        "Name": "Get-ExchangeDelegation",
+        "Environment": "PROD",
         "LogLevel": "Info"
     },
 
