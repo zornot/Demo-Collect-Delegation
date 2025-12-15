@@ -857,13 +857,6 @@ try {
                 continue
             }
 
-            # Progression tous les 10 elements ou a la fin
-            $displayIndex = $i + 1
-            if ($displayIndex % 10 -eq 0 -or $displayIndex -eq $mailboxCount) {
-                $percent = [math]::Round(($displayIndex / $mailboxCount) * 100)
-                Write-Status -Type Action -Message "Analyse mailboxes : $displayIndex/$mailboxCount ($percent%)" -Indent 1
-            }
-
             # Collecter LastLogon si demande
             $mailboxLastLogon = ''
             if ($IncludeLastLogon) {
@@ -959,6 +952,13 @@ try {
 
             # Cette mailbox est maintenant completee
             $lastCompletedIndex = $i
+
+            # Progression tous les 10 elements termines ou a la fin
+            $completedCount = $i + 1
+            if ($completedCount % 10 -eq 0 -or $completedCount -eq $mailboxCount) {
+                $percent = [math]::Round(($completedCount / $mailboxCount) * 100)
+                Write-Status -Type Action -Message "Mailboxes traitees : $completedCount/$mailboxCount ($percent%)" -Indent 1
+            }
         }
 
         # Collecte terminee avec succes - supprimer checkpoint
