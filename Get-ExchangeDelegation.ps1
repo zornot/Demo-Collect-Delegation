@@ -26,7 +26,10 @@
     Defaut : $false
 .PARAMETER CleanupOrphans
     Supprimer les delegations orphelines (trustees supprimes).
-    Utiliser avec -WhatIf pour simuler sans supprimer.
+    Par defaut en mode simulation (WhatIf). Utiliser -Force pour supprimer reellement.
+.PARAMETER Force
+    Force la suppression reelle des delegations orphelines.
+    Sans ce parametre, -CleanupOrphans fonctionne en mode simulation.
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1
     Collecte toutes les delegations et exporte dans Output/.
@@ -34,15 +37,15 @@
     .\Get-ExchangeDelegation.ps1 -OutputPath "C:\Reports" -IncludeRoomMailbox
     Collecte avec les salles de reunion, export dans C:\Reports.
 .EXAMPLE
-    .\Get-ExchangeDelegation.ps1 -CleanupOrphans -WhatIf
-    Simule la suppression des delegations orphelines (sans supprimer).
-.EXAMPLE
     .\Get-ExchangeDelegation.ps1 -CleanupOrphans
-    Collecte et supprime les delegations orphelines.
+    Simule la suppression des delegations orphelines (mode WhatIf par defaut).
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -CleanupOrphans -Force
+    Collecte et supprime reellement les delegations orphelines.
 .NOTES
     Author: zornot
     Date: 2025-12-15
-    Version: 1.1.0
+    Version: 1.3.0
 
     Prerequis:
     - Module ExchangeOnlineManagement installe
@@ -62,7 +65,10 @@ param(
     [switch]$IncludeRoomMailbox = $false,
 
     [Parameter(Mandatory = $false)]
-    [switch]$CleanupOrphans
+    [switch]$CleanupOrphans,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$Force
 )
 
 #region Configuration
@@ -71,7 +77,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$script:Version = "1.1.0"
+$script:Version = "1.3.0"
 $script:CollectionTimestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz"
 
 # OutputPath par defaut : ./Output
@@ -96,6 +102,11 @@ Import-Module "$PSScriptRoot\Modules\Write-Log\Modules\Write-Log\Write-Log.psm1"
 Import-Module "$PSScriptRoot\Modules\ConsoleUI\Modules\ConsoleUI\ConsoleUI.psm1" -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\EXOConnection\Modules\EXOConnection\EXOConnection.psm1" -ErrorAction Stop
 Initialize-Log -Path "$PSScriptRoot\Logs"
+
+# Forcer WhatIf si CleanupOrphans sans Force (securite par defaut)
+if ($CleanupOrphans -and -not $Force) {
+    $WhatIfPreference = $true
+}
 
 # Comptes systeme a exclure des resultats
 $script:ExcludedTrustees = @(
@@ -266,7 +277,10 @@ function Remove-OrphanedDelegation {
                         -ErrorAction Stop
                 }
                 'Calendar' {
-                    $calendarPath = "${mailbox}:\Calendar"
+                    # Utiliser le FolderPath stocke (nom localise: Calendar, Calendrier, etc.)
+                    $folderPath = $Delegation.FolderPath
+                    if ([string]::IsNullOrEmpty($folderPath)) { $folderPath = 'Calendar' }
+                    $calendarPath = "${mailbox}:\$folderPath"
                     Remove-MailboxFolderPermission -Identity $calendarPath `
                         -User $trustee -Confirm:$false -ErrorAction Stop
                 }
@@ -440,14 +454,28 @@ function Get-MailboxCalendarDelegation {
     <#
     .SYNOPSIS
         Recupere les permissions sur le calendrier d'une mailbox.
+    .DESCRIPTION
+        Detecte automatiquement le nom localise du dossier Calendar
+        (Calendar, Calendrier, Kalender, etc.) via FolderType.
     #>
     param([object]$Mailbox)
 
     $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
 
     try {
-        # Le calendrier peut avoir differents noms selon la langue
-        $calendarFolderPath = "$($Mailbox.PrimarySmtpAddress):\Calendar"
+        # Detecter le nom localise du calendrier via FolderType (toujours en anglais)
+        $calendarFolder = Get-MailboxFolderStatistics -Identity $Mailbox.PrimarySmtpAddress -FolderScope Calendar -ErrorAction Stop |
+            Where-Object { $_.FolderType -eq 'Calendar' } |
+            Select-Object -First 1
+
+        if (-not $calendarFolder) {
+            Write-Log "Calendrier non trouve pour $($Mailbox.PrimarySmtpAddress)" -Level DEBUG
+            return $delegationList
+        }
+
+        # Utiliser .Name qui contient directement le nom localise (ex: Calendrier)
+        $folderName = $calendarFolder.Name
+        $calendarFolderPath = "$($Mailbox.PrimarySmtpAddress):\$folderName"
 
         $permissions = Get-MailboxFolderPermission -Identity $calendarFolderPath -ErrorAction Stop |
             Where-Object {
@@ -471,13 +499,12 @@ function Get-MailboxCalendarDelegation {
                 -TrusteeDisplayName $trusteeDisplayName `
                 -DelegationType 'Calendar' `
                 -AccessRights $accessRightsList `
-                -FolderPath 'Calendar'
+                -FolderPath $folderName
 
             $delegationList.Add($delegationRecord)
         }
     }
     catch {
-        # Calendrier peut ne pas exister ou avoir un nom different
         Write-Log "Erreur Calendar sur $($Mailbox.PrimarySmtpAddress): $($_.Exception.Message)" -Level DEBUG
     }
 
@@ -539,6 +566,42 @@ function Get-MailboxForwardingDelegation {
 
 try {
     Write-ConsoleBanner -Title "COLLECT EXCHANGE DELEGATIONS" -Version $script:Version
+
+    # Afficher le mode d'execution apres la banniere
+    if ($CleanupOrphans) {
+        if ($Force) {
+            # Mode SUPPRESSION REELLE - encart avec Write-Box
+            Write-Box -Title "[!] MODE SUPPRESSION REELLE" -Content @(
+                "Les delegations orphelines seront SUPPRIMEES definitivement"
+            )
+
+            # Confirmation interactive obligatoire
+            Write-Host "  Pour confirmer la suppression, tapez " -NoNewline -ForegroundColor White
+            Write-Host "SUPPRIMER" -NoNewline -ForegroundColor Red
+            Write-Host " : " -NoNewline -ForegroundColor White
+            $confirmation = Read-Host
+
+            if ($confirmation -ne "SUPPRIMER") {
+                Write-Host ""
+                Write-Status -Type Info -Message "Annule - confirmation incorrecte. Aucune modification effectuee."
+                Write-Log "Mode Force annule - confirmation incorrecte" -Level INFO
+                exit 0
+            }
+
+            Write-Host ""
+            Write-Status -Type Success -Message "Confirmation acceptee - suppression en cours..."
+            Write-Log "Mode CleanupOrphans avec Force - suppression reelle activee (confirme)" -Level WARNING
+        }
+        else {
+            # Mode SIMULATION - encart avec Write-Box
+            Write-Box -Title "[i] MODE SIMULATION (WhatIf)" -Content @(
+                "Aucune suppression ne sera effectuee"
+                "Utiliser -Force pour supprimer reellement"
+            )
+            Write-Log "Mode CleanupOrphans sans Force - simulation WhatIf" -Level INFO
+        }
+    }
+
     Write-Log "Demarrage collecte des delegations Exchange Online" -Level INFO
 
     # Connexion Exchange Online (avec reutilisation session existante)
@@ -600,27 +663,27 @@ try {
         # FullAccess
         $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
         $statsPerType.FullAccess += $fullAccessDelegations.Count
-        foreach ($delegation in $fullAccessDelegations) { $allDelegations.Add($delegation) }
+        $allDelegations.AddRange($fullAccessDelegations)
 
         # SendAs
         $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox
         $statsPerType.SendAs += $sendAsDelegations.Count
-        foreach ($delegation in $sendAsDelegations) { $allDelegations.Add($delegation) }
+        $allDelegations.AddRange($sendAsDelegations)
 
         # SendOnBehalf
         $sendOnBehalfDelegations = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
         $statsPerType.SendOnBehalf += $sendOnBehalfDelegations.Count
-        foreach ($delegation in $sendOnBehalfDelegations) { $allDelegations.Add($delegation) }
+        $allDelegations.AddRange($sendOnBehalfDelegations)
 
         # Calendar
         $calendarDelegations = Get-MailboxCalendarDelegation -Mailbox $mailbox
         $statsPerType.Calendar += $calendarDelegations.Count
-        foreach ($delegation in $calendarDelegations) { $allDelegations.Add($delegation) }
+        $allDelegations.AddRange($calendarDelegations)
 
         # Forwarding
         $forwardingDelegations = Get-MailboxForwardingDelegation -Mailbox $mailbox
         $statsPerType.Forwarding += $forwardingDelegations.Count
-        foreach ($delegation in $forwardingDelegations) { $allDelegations.Add($delegation) }
+        $allDelegations.AddRange($forwardingDelegations)
     }
 
     Write-Host ""  # Nouvelle ligne apres la progression
