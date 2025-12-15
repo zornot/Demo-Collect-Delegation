@@ -30,6 +30,9 @@
 .PARAMETER OrphansOnly
     Exporter uniquement les delegations orphelines (IsOrphan = True).
     Utile pour analyser ou nettoyer les permissions obsoletes.
+.PARAMETER IncludeLastLogon
+    Ajouter la date de derniere connexion de la mailbox au CSV.
+    Impact performance : +1 appel API (Get-MailboxStatistics) par mailbox.
 .PARAMETER Force
     Force la suppression reelle des delegations orphelines.
     Sans ce parametre, -CleanupOrphans fonctionne en mode simulation.
@@ -48,6 +51,9 @@
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -OrphansOnly
     Exporte uniquement les delegations orphelines dans le CSV.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -IncludeLastLogon
+    Collecte avec la date de derniere connexion de chaque mailbox.
 .NOTES
     Author: zornot
     Date: 2025-12-15
@@ -75,6 +81,9 @@ param(
 
     [Parameter(Mandatory = $false)]
     [switch]$OrphansOnly,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$IncludeLastLogon,
 
     [Parameter(Mandatory = $false)]
     [switch]$Force
@@ -333,7 +342,8 @@ function New-DelegationRecord {
         [string]$DelegationType,
         [string]$AccessRights,
         [string]$FolderPath = '',
-        [bool]$IsOrphan = $false
+        [bool]$IsOrphan = $false,
+        [string]$MailboxLastLogon = ''
     )
 
     [PSCustomObject]@{
@@ -345,6 +355,7 @@ function New-DelegationRecord {
         AccessRights       = $AccessRights
         FolderPath         = $FolderPath
         IsOrphan           = $IsOrphan
+        MailboxLastLogon   = $MailboxLastLogon
         CollectedAt        = $script:CollectionTimestamp
     }
 }
@@ -685,30 +696,54 @@ try {
             Write-Host "`r    [>] Analyse mailboxes : $mailboxIndex/$mailboxCount ($percent%)" -NoNewline -ForegroundColor White
         }
 
+        # Collecter LastLogon si demande
+        $mailboxLastLogon = ''
+        if ($IncludeLastLogon) {
+            $stats = Get-MailboxStatistics -Identity $mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue
+            if ($stats -and $stats.LastLogonTime) {
+                $mailboxLastLogon = $stats.LastLogonTime.ToString('o')
+            }
+        }
+
         # FullAccess
         $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
         $statsPerType.FullAccess += $fullAccessDelegations.Count
-        foreach ($delegation in $fullAccessDelegations) { $allDelegations.Add($delegation) }
+        foreach ($delegation in $fullAccessDelegations) {
+            $delegation.MailboxLastLogon = $mailboxLastLogon
+            $allDelegations.Add($delegation)
+        }
 
         # SendAs
         $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox
         $statsPerType.SendAs += $sendAsDelegations.Count
-        foreach ($delegation in $sendAsDelegations) { $allDelegations.Add($delegation) }
+        foreach ($delegation in $sendAsDelegations) {
+            $delegation.MailboxLastLogon = $mailboxLastLogon
+            $allDelegations.Add($delegation)
+        }
 
         # SendOnBehalf
         $sendOnBehalfDelegations = Get-MailboxSendOnBehalfDelegation -Mailbox $mailbox
         $statsPerType.SendOnBehalf += $sendOnBehalfDelegations.Count
-        foreach ($delegation in $sendOnBehalfDelegations) { $allDelegations.Add($delegation) }
+        foreach ($delegation in $sendOnBehalfDelegations) {
+            $delegation.MailboxLastLogon = $mailboxLastLogon
+            $allDelegations.Add($delegation)
+        }
 
         # Calendar
         $calendarDelegations = Get-MailboxCalendarDelegation -Mailbox $mailbox
         $statsPerType.Calendar += $calendarDelegations.Count
-        foreach ($delegation in $calendarDelegations) { $allDelegations.Add($delegation) }
+        foreach ($delegation in $calendarDelegations) {
+            $delegation.MailboxLastLogon = $mailboxLastLogon
+            $allDelegations.Add($delegation)
+        }
 
         # Forwarding
         $forwardingDelegations = Get-MailboxForwardingDelegation -Mailbox $mailbox
         $statsPerType.Forwarding += $forwardingDelegations.Count
-        foreach ($delegation in $forwardingDelegations) { $allDelegations.Add($delegation) }
+        foreach ($delegation in $forwardingDelegations) {
+            $delegation.MailboxLastLogon = $mailboxLastLogon
+            $allDelegations.Add($delegation)
+        }
     }
 
     Write-Host ""  # Nouvelle ligne apres la progression
