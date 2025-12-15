@@ -27,6 +27,9 @@
 .PARAMETER CleanupOrphans
     Supprimer les delegations orphelines (trustees supprimes).
     Par defaut en mode simulation (WhatIf). Utiliser -Force pour supprimer reellement.
+.PARAMETER OrphansOnly
+    Exporter uniquement les delegations orphelines (IsOrphan = True).
+    Utile pour analyser ou nettoyer les permissions obsoletes.
 .PARAMETER Force
     Force la suppression reelle des delegations orphelines.
     Sans ce parametre, -CleanupOrphans fonctionne en mode simulation.
@@ -42,6 +45,9 @@
 .EXAMPLE
     .\Get-ExchangeDelegation.ps1 -CleanupOrphans -Force
     Collecte et supprime reellement les delegations orphelines.
+.EXAMPLE
+    .\Get-ExchangeDelegation.ps1 -OrphansOnly
+    Exporte uniquement les delegations orphelines dans le CSV.
 .NOTES
     Author: zornot
     Date: 2025-12-15
@@ -66,6 +72,9 @@ param(
 
     [Parameter(Mandatory = $false)]
     [switch]$CleanupOrphans,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$OrphansOnly,
 
     [Parameter(Mandatory = $false)]
     [switch]$Force
@@ -712,11 +721,20 @@ try {
     $exportFilePath = Join-Path -Path $OutputPath -ChildPath $exportFileName
 
     if ($allDelegations.Count -gt 0) {
+        # Filtrer si OrphansOnly
+        $exportData = if ($OrphansOnly) {
+            $allDelegations | Where-Object { $_.IsOrphan -eq $true }
+        }
+        else {
+            $allDelegations
+        }
+
         # -WhatIf:$false : L'export CSV doit se faire meme en mode simulation
         # (WhatIf ne concerne que les suppressions de delegations orphelines)
-        $allDelegations | Export-Csv -Path $exportFilePath -NoTypeInformation -Encoding UTF8 -WhatIf:$false
+        $exportData | Export-Csv -Path $exportFilePath -NoTypeInformation -Encoding UTF8 -WhatIf:$false
         Write-Status -Type Success -Message "Export: $exportFilePath" -Indent 1
-        Write-Log "Export CSV: $exportFilePath ($($allDelegations.Count) lignes)" -Level SUCCESS
+        $filterNote = if ($OrphansOnly) { " (orphelins uniquement)" } else { "" }
+        Write-Log "Export CSV: $exportFilePath ($($exportData.Count) lignes$filterNote)" -Level SUCCESS
     }
     else {
         Write-Status -Type Warning -Message "Aucune delegation trouvee - pas d'export" -Indent 1
