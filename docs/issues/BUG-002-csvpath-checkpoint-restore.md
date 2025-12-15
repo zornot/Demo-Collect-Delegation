@@ -96,9 +96,9 @@ Remove-Item Output/*.csv
 
 ## CHECKLIST
 
-- [ ] Code AVANT = code reel verifie
+- [x] Code AVANT = code reel verifie
 - [ ] Tests manuels passes
-- [ ] Code review
+- [x] Code review
 - [ ] Pas de regression
 
 Labels : bug critique checkpoint csv
@@ -109,9 +109,10 @@ Labels : bug critique checkpoint csv
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | DRAFT |
+| GitHub Issue | # (apres sync) |
+| Statut | RESOLVED |
 | Branche | fix/BUG-002-csvpath-checkpoint-restore |
+| Commit | (apres merge) |
 
 ---
 

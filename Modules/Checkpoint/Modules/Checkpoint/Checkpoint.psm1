@@ -203,6 +203,11 @@ function Initialize-Checkpoint {
             [void]$script:CheckpointState.ProcessedKeys.Add($key)
         }
 
+        # Restaurer le chemin CSV depuis le checkpoint
+        if ($existing.ContainsKey('CsvPath') -and -not [string]::IsNullOrEmpty($existing.CsvPath)) {
+            $script:CheckpointState.CsvPath = $existing.CsvPath
+        }
+
         $script:CheckpointState.IsResume = $true
         Write-Verbose "Checkpoint restaure: index $($existing.LastProcessedIndex), $($script:CheckpointState.ProcessedKeys.Count) elements traites"
     }
