@@ -86,6 +86,9 @@ param(
     [switch]$IncludeLastLogon,
 
     [Parameter(Mandatory = $false)]
+    [switch]$IncludeInactive,
+
+    [Parameter(Mandatory = $false)]
     [switch]$Force
 )
 
@@ -378,6 +381,7 @@ function New-DelegationRecord {
         [string]$AccessRights,
         [string]$FolderPath = '',
         [bool]$IsOrphan = $false,
+        [bool]$IsInactive = $false,
         [string]$MailboxLastLogon = ''
     )
 
@@ -390,6 +394,7 @@ function New-DelegationRecord {
         AccessRights       = $AccessRights
         FolderPath         = $FolderPath
         IsOrphan           = $IsOrphan
+        IsInactive         = $IsInactive
         MailboxLastLogon   = $MailboxLastLogon
         CollectedAt        = $script:CollectionTimestamp
     }
@@ -697,11 +702,23 @@ try {
 
     Write-Status -Type Info -Message "Types inclus: $($mailboxTypes -join ', ')" -Indent 1
 
-    # Recuperation des mailboxes
+    # Recuperation des mailboxes actives
     $allMailboxes = Get-EXOMailbox -ResultSize Unlimited -RecipientTypeDetails $mailboxTypes -Properties DisplayName, PrimarySmtpAddress, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
-    $mailboxCount = $allMailboxes.Count
+    $activeCount = $allMailboxes.Count
+    Write-Status -Type Success -Message "$activeCount mailboxes actives trouvees" -Indent 1
 
-    Write-Status -Type Success -Message "$mailboxCount mailboxes trouvees" -Indent 1
+    # Mailboxes inactives (si demande)
+    $script:InactiveMailboxIds = @()
+    if ($IncludeInactive) {
+        Write-Status -Type Info -Message "Recuperation des mailboxes inactives..." -Indent 1
+        $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
+        $script:InactiveMailboxIds = $inactiveMailboxes | ForEach-Object { $_.ExchangeObjectId }
+        $allMailboxes = @($allMailboxes) + @($inactiveMailboxes)
+        Write-Status -Type Success -Message "$($inactiveMailboxes.Count) mailboxes inactives ajoutees" -Indent 2
+    }
+
+    $mailboxCount = $allMailboxes.Count
+    Write-Status -Type Success -Message "$mailboxCount mailboxes au total" -Indent 1
     Write-Log "Mailboxes recuperees: $mailboxCount" -Level INFO -NoConsole
 
     if ($mailboxCount -eq 0) {
@@ -743,11 +760,15 @@ try {
             }
         }
 
+        # Verifier si mailbox inactive
+        $isInactive = $mailbox.ExchangeObjectId -in $script:InactiveMailboxIds
+
         # FullAccess
         $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
         $statsPerType.FullAccess += $fullAccessDelegations.Count
         foreach ($delegation in $fullAccessDelegations) {
             $delegation.MailboxLastLogon = $mailboxLastLogon
+            $delegation.IsInactive = $isInactive
             $allDelegations.Add($delegation)
         }
 
@@ -756,6 +777,7 @@ try {
         $statsPerType.SendAs += $sendAsDelegations.Count
         foreach ($delegation in $sendAsDelegations) {
             $delegation.MailboxLastLogon = $mailboxLastLogon
+            $delegation.IsInactive = $isInactive
             $allDelegations.Add($delegation)
         }
 
@@ -764,6 +786,7 @@ try {
         $statsPerType.SendOnBehalf += $sendOnBehalfDelegations.Count
         foreach ($delegation in $sendOnBehalfDelegations) {
             $delegation.MailboxLastLogon = $mailboxLastLogon
+            $delegation.IsInactive = $isInactive
             $allDelegations.Add($delegation)
         }
 
@@ -772,6 +795,7 @@ try {
         $statsPerType.Calendar += $calendarDelegations.Count
         foreach ($delegation in $calendarDelegations) {
             $delegation.MailboxLastLogon = $mailboxLastLogon
+            $delegation.IsInactive = $isInactive
             $allDelegations.Add($delegation)
         }
 
@@ -780,6 +804,7 @@ try {
         $statsPerType.Forwarding += $forwardingDelegations.Count
         foreach ($delegation in $forwardingDelegations) {
             $delegation.MailboxLastLogon = $mailboxLastLogon
+            $delegation.IsInactive = $isInactive
             $allDelegations.Add($delegation)
         }
     }
