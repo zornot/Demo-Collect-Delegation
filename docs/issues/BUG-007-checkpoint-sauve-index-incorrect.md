@@ -163,11 +163,11 @@ AJOUTER apres le comptage des delegations existantes :
 
 ### Criteres d'Acceptation
 
-- [ ] Interruption pendant mailbox N → resume re-traite mailbox N
-- [ ] Interruption avant toute completion → resume demarre a 0
-- [ ] Checkpoint incoherent (ProcessedKeys > 0 mais CSV vide) → reset a 0
-- [ ] Aucune perte de delegations apres N interruptions
-- [ ] Run complet donne le meme resultat qu'avant (pas de regression)
+- [x] Interruption pendant mailbox N → resume re-traite mailbox N
+- [x] Interruption avant toute completion → resume demarre a 0
+- [x] Checkpoint incoherent (ProcessedKeys > 0 mais CSV vide) → reset a 0
+- [x] Aucune perte de delegations apres N interruptions
+- [x] Run complet donne le meme resultat qu'avant (pas de regression)
 
 ### Scenario de Test
 
@@ -178,12 +178,33 @@ AJOUTER apres le comptage des delegations existantes :
 5. Laisser terminer
 6. Comparer avec run complet (doit avoir le meme nombre de delegations)
 
+### Resultats de Validation (2025-12-15)
+
+| Run | Checkpoint In | CSV existant | Action | Checkpoint Out |
+|-----|---------------|--------------|--------|----------------|
+| 1 | - | 0 | Interrupt avant completion | Pas de checkpoint |
+| 2 | - | 0 | 3 mailboxes completees | index 2 |
+| 3 | 3 traitees | 11 | +16 delegations | index 8 |
+| 4 | 9 traitees | 27 | +17 delegations | index 16 |
+| 5 | 17 traitees | 44 | Complete | - |
+
+**TOTAL : 64 delegations = reference (0% perte)**
+
+| Comportement | Resultat |
+|--------------|----------|
+| Interrupt avant completion | "aucune mailbox completee, pas de checkpoint" |
+| Interrupt apres mailbox N | Checkpoint sauve index N (pas N+1) |
+| Reprise checkpoint | Re-traite depuis index correct |
+| Aucune perte de donnees | 64 = 64 |
+
+**Avant/Apres BUG-007** : 5 interruptions passent de 53 delegations (17% perte) a 64 delegations (0% perte)
+
 ## CHECKLIST
 
-- [ ] Code AVANT = code reel
-- [ ] Tests manuels interruption/reprise
-- [ ] Verification avec reference 64 delegations
-- [ ] Pas de regression mode normal
+- [x] Code AVANT = code reel
+- [x] Tests manuels interruption/reprise
+- [x] Verification avec reference 64 delegations
+- [x] Pas de regression mode normal
 
 Labels : bug critical checkpoint data-loss
 
