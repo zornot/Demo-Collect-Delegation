@@ -714,7 +714,7 @@ try {
         $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
         $script:InactiveMailboxIds = $inactiveMailboxes | ForEach-Object { $_.ExchangeObjectId }
         $allMailboxes = @($allMailboxes) + @($inactiveMailboxes)
-        Write-Status -Type Success -Message "$($inactiveMailboxes.Count) mailboxes inactives ajoutees" -Indent 2
+        Write-Status -Type Success -Message "$($inactiveMailboxes.Count) mailboxes inactives ajoutees" -Indent 1
     }
 
     $mailboxCount = $allMailboxes.Count
