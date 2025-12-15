@@ -147,5 +147,5 @@ Labels : refactor faible consoleui dry
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| Statut | CLOSED |
 | Branche | feature/REFACTOR-001-write-status-vers-module |

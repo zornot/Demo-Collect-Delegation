@@ -2,75 +2,79 @@
 
 ## Tache en Cours
 
-Aucune tache en cours. Toutes les issues de la session ont ete completees.
+Aucune tache active.
 
 ## Issue Active
 
 Aucune issue en cours.
 
-## Dernieres Activites
-
-- Mise a jour du template `.claude/` (agents, commands, skills)
-- Discussion sur `Settings.json` : le script fonctionne sans, utilise defauts hardcodes
-- Nouveau skill `knowledge-verification` ajoute
-
 ## Issues Terminees Cette Session
 
 | Issue | Titre | GitHub |
 |-------|-------|--------|
-| FEAT-003 | Colonne IsOrphan pour toutes les delegations orphelines | #6 |
+| REFACTOR-001 | Write-Status vers module ConsoleUI | local |
+| FEAT-003 | Colonne IsOrphan pour delegations orphelines | #6 |
 | FEAT-004 | Option -OrphansOnly pour export filtre | #7 |
-| FEAT-005 | Option -IncludeLastLogon pour date derniere connexion | #8 |
-| PERF-001 | Parallelisation collecte | ABANDONNEE |
-| FEAT-006 | TrusteeLastLogon via Graph API | ABANDONNEE |
+| FEAT-005 | Option -IncludeLastLogon | #8 |
+| FEAT-007 | Implementation Settings.json | local |
+| BUG-001 | Retention days hardcode (fix config) | local |
+| UI-001 | Amelioration affichage console (-NoConsole) | local |
+| FIX-002 | Calendrier multilingue | #4 |
 
 ## Progression
 
-- [x] Detection orphelins calendrier avec noms caches (ADRecipient=null)
-- [x] Colonne IsOrphan pour tous les types de delegation (SID + noms caches)
-- [x] Parametre -OrphansOnly pour filtrer l'export CSV
-- [x] Parametre -IncludeLastLogon pour date derniere connexion mailbox
-- [x] Statistiques finales (duree execution, chemin CSV, compte orphelins)
-- [x] Format date francais (dd/MM/yyyy) pour MailboxLastLogon
+- [x] Detection orphelins calendrier avec noms caches
+- [x] Colonne IsOrphan pour tous les types de delegation
+- [x] Parametres -OrphansOnly et -IncludeLastLogon
+- [x] Statistiques finales avec Write-Box
+- [x] Settings.json cree depuis template
+- [x] BUG-001 : Invoke-LogRotation utilise config
+- [x] UI-001 : 7 DEBUG + 4 INFO avec -NoConsole
+- [x] Alignement progression (4 espaces -> 2)
+- [x] Write-Status ameliore (-NoNewline, -CarriageReturn)
+- [x] REFACTOR-001 : Write-Status vers module ConsoleUI
 
 ## Decisions Cles
 
 | Decision | Justification |
 |----------|---------------|
-| IsOrphan=True pour SID ET noms caches | Coherence dans l'export CSV |
-| -IncludeLastLogon optionnel | Impact perf ~0.5s/mailbox (12s pour 25 mailboxes) |
-| Format date dd/MM/yyyy | Preference utilisateur |
-| PERF-001 ABANDONNEE | Isolation runspaces Exchange incompatible, effort 8h+ |
-| Write-Box pour statistiques | Coherence avec module ConsoleUI |
-| FEAT-006 ABANDONNEE | Graph API requiert Azure AD P1 (~150 USD/mois), methodes gratuites non fiables |
+| -NoConsole pour DEBUG/INFO | Console propre, progression non interrompue |
+| Write-Status avec -NoNewline/-CarriageReturn | Support progression dynamique |
+| REFACTOR-001 cree | Write-Status duplique dans script au lieu de module |
+| Indent 2 espaces | Coherence avec -Indent 1 de Write-Status |
+| PERF-001/FEAT-006/DRY-001 ABANDONNEES | Contraintes techniques documentees |
 
-## Fichiers Modifies
+## Fichiers Modifies Cette Session
 
 | Fichier | Modification |
 |---------|--------------|
-| Get-ExchangeDelegation.ps1 | +IsOrphan, +MailboxLastLogon, +OrphansOnly, +stats finales |
-| docs/issues/FEAT-003-*.md | Issue orphelins - CLOSED |
-| docs/issues/FEAT-004-*.md | Issue export filtre - CLOSED |
-| docs/issues/FEAT-005-*.md | Issue lastlogon - CLOSED |
-| docs/issues/PERF-001-*.md | Issue parallelisation - ABANDONNEE |
-| docs/issues/FEAT-006-*.md | Issue TrusteeLastLogon - ABANDONNEE |
-| .claude/agents/*.md | Mise a jour templates agents |
-| .claude/commands/*.md | Mise a jour templates commands |
-| .claude/skills/**/*.md | Mise a jour skills + nouveau knowledge-verification |
-| Tests/Unit/*.Tests.ps1 | Modifications tests unitaires |
-| audit/AUDIT-2025-12-15-*.md | Rapport d'audit |
+| Get-ExchangeDelegation.ps1:219-248 | Write-Status +NoNewline +CarriageReturn |
+| Get-ExchangeDelegation.ps1:766 | Write-Status pour progression |
+| Get-ExchangeDelegation.ps1:936 | Utilise $script:Config.Retention.LogDays |
+| Get-ExchangeDelegation.ps1 | +NoConsole sur 7 DEBUG et 4 INFO |
+| Config/Settings.json | Cree depuis template (gitignore) |
+| docs/issues/*.md | 3 issues CLOSED, 1 DRAFT |
 
 ## Contexte a Preserver
 
-- **Orphelins detectes** : SID (S-1-5-21-*) + noms caches (ADRecipient=null)
-- **Performance baseline** : 1:33 sans options, 1:45 avec -IncludeLastLogon (25 mailboxes)
-- **TrusteeLastLogon non implemente** : Necessite Graph API ou verification mailbox trustee
-- **Module ConsoleUI** : Write-Box utilise pour affichage statistiques
-- **Settings.json** : Le script fonctionne sans (defauts hardcodes), Settings.example.json est juste un template
-- **Changements non commites** : Templates .claude/ mis a jour depuis le template source
+- **Write-Log module** : `-NoConsole` deja supporte (L139 du module)
+- **Write-Status** : Dans ConsoleUI.psm1 (deplace depuis script)
+- **ConsoleUI module** : Contient Write-Box, Write-ConsoleBanner, Write-SummaryBox, Write-Status
+- **Progression** : `-Indent 1 -NoNewline -CarriageReturn` pour mise a jour dynamique
+- **Settings.json** : Local (gitignore), script fonctionne sans
+
+## Commits Cette Session
+
+| Commit | Message |
+|--------|---------|
+| c86a627 | fix(import): add -Force to ConsoleUI module import |
+| 8d09940 | refactor(consoleui): move Write-Status to ConsoleUI module |
+| 3ea585a | fix(ui): align progress indicator indent (4 spaces -> 2) |
+| 805b960 | chore(issue): close UI-001 and update README |
+| f71bd7d | ui(logging): add -NoConsole to DEBUG/INFO logs |
+| 52c114d | fix(config): use config values for log rotation |
 
 ## Prochaines Etapes
 
-1. **Optionnel** : TrusteeLastLogon via Graph API (effort ~1h30)
-2. **Optionnel** : Tests Pester pour les nouvelles fonctionnalites
-3. **Production** : Script pret a l'emploi
+1. **Optionnel** : Ajouter saut de ligne avant WARNING dans Write-Log
+2. **Production** : Script pret a l'emploi

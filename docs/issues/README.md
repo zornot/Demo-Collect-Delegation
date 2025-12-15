@@ -15,12 +15,13 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
-| - | Aucune issue en cours | - |
+| (aucune) | | |
 
 ## Issues Terminees
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| REFACTOR-001 | Write-Status vers module ConsoleUI | 2025-12-15 | local |
 | FEAT-003 | Colonne IsOrphan pour delegations orphelines | 2025-12-15 | #6 |
 | FEAT-004 | Option -OrphansOnly pour export filtre | 2025-12-15 | #7 |
 | FEAT-005 | Option -IncludeLastLogon | 2025-12-15 | #8 |
