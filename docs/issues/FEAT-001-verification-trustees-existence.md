@@ -1,10 +1,13 @@
 # FEAT-001 - Detection des delegations orphelines
 
+## GitHub Issue
+#1 (CLOSED)
+
 ## Type
 BUG → RESOLVED
 
 ## Statut
-RESOLVED
+CLOSED
 
 ## Description
 
