@@ -21,6 +21,7 @@
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-007 | Checkpoint sauve index en cours au lieu du dernier complete | 2025-12-15 | local |
 | BUG-006 | Statistiques incorrectes en reprise checkpoint | 2025-12-15 | local |
 | FEAT-011 | Colonne MailboxType dans export CSV | 2025-12-15 | local |
 | BUG-005 | Header CSV inverse + tri checkpoint | 2025-12-15 | local |

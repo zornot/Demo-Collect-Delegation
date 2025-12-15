@@ -194,5 +194,5 @@ Labels : bug critical checkpoint data-loss
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| Statut | CLOSED |
 | Branche | fix/BUG-007-checkpoint-sauve-index-incorrect |
