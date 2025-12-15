@@ -169,5 +169,5 @@ Labels : feat moyenne calendar orphan
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # |
-| Statut | IN_PROGRESS |
+| Statut | CLOSED |
 | Branche | feature/FEAT-003-calendar-orphelins-caches |
