@@ -815,6 +815,27 @@ try {
         Write-Log "CSV initialise: $exportFilePath" -Level DEBUG -NoConsole
     }
 
+    # Compter les delegations existantes si reprise checkpoint (pour stats finales)
+    $existingDelegationCount = 0
+    $existingStats = @{ FullAccess = 0; SendAs = 0; SendOnBehalf = 0; Calendar = 0; Forwarding = 0 }
+    $existingOrphansCount = 0
+    if ($checkpointState -and (Test-Path $exportFilePath)) {
+        $existingLines = Get-Content $exportFilePath | Select-Object -Skip 1  # Skip header
+        $existingDelegationCount = $existingLines.Count
+        foreach ($line in $existingLines) {
+            $cols = $line -split ','
+            $delegationType = $cols[4] -replace '"', ''  # DelegationType est colonne 5 (index 4)
+            if ($existingStats.ContainsKey($delegationType)) {
+                $existingStats[$delegationType]++
+            }
+            # Compter orphelins (IsOrphan est colonne 8, index 7)
+            if ($cols[7] -replace '"', '' -eq 'True') {
+                $existingOrphansCount++
+            }
+        }
+        Write-Log "CSV existant: $existingDelegationCount delegations pre-existantes" -Level DEBUG -NoConsole
+    }
+
     # Boucle principale avec gestion checkpoint
     $currentIndex = $startIndex
     try {
@@ -942,11 +963,13 @@ try {
         }
     }
 
-    Write-Status -Type Success -Message "Collecte terminee: $($allDelegations.Count) delegations" -Indent 1
+    # Calculer le total (session + existants si reprise checkpoint)
+    $totalDelegations = $allDelegations.Count + $existingDelegationCount
+    Write-Status -Type Success -Message "Collecte terminee: $totalDelegations delegations" -Indent 1
 
     # CSV deja ecrit pendant la boucle (pattern Write-Then-Mark)
     # Juste afficher le resultat final
-    if ($allDelegations.Count -gt 0) {
+    if ($totalDelegations -gt 0) {
         $exportedCount = if ($OrphansOnly) {
             @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count
         }
@@ -1013,18 +1036,18 @@ try {
     $stopwatch.Stop()
     $executionTime = $stopwatch.Elapsed
 
-    # Compter les orphelins dans l'export
-    $orphansInExport = @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count
+    # Compter les orphelins - session + existants si reprise checkpoint
+    $orphansInExport = @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count + $existingOrphansCount
 
     # Resume final avec Write-Box du module ConsoleUI
     $summaryContent = [ordered]@{
         'Mailboxes'    = $mailboxCount
-        'FullAccess'   = $statsPerType.FullAccess
-        'SendAs'       = $statsPerType.SendAs
-        'SendOnBehalf' = $statsPerType.SendOnBehalf
-        'Calendar'     = $statsPerType.Calendar
-        'Forwarding'   = $statsPerType.Forwarding
-        'TOTAL'        = $allDelegations.Count
+        'FullAccess'   = $statsPerType.FullAccess + $existingStats.FullAccess
+        'SendAs'       = $statsPerType.SendAs + $existingStats.SendAs
+        'SendOnBehalf' = $statsPerType.SendOnBehalf + $existingStats.SendOnBehalf
+        'Calendar'     = $statsPerType.Calendar + $existingStats.Calendar
+        'Forwarding'   = $statsPerType.Forwarding + $existingStats.Forwarding
+        'TOTAL'        = $totalDelegations
         'Orphelins'    = $orphansInExport
     }
 
@@ -1038,7 +1061,7 @@ try {
     $statsContent = [ordered]@{
         'Duree' = $executionTime.ToString('mm\:ss')
     }
-    if ($allDelegations.Count -gt 0 -and $exportFilePath) {
+    if ($totalDelegations -gt 0 -and $exportFilePath) {
         $statsContent['Export'] = $exportFilePath
     }
     if ($orphansInExport -gt 0) {
@@ -1047,7 +1070,7 @@ try {
 
     Write-Box -Title "STATISTIQUES" -Content $statsContent
 
-    Write-Log "Collecte terminee - Total: $($allDelegations.Count) delegations - Duree: $($executionTime.ToString('mm\:ss'))" -Level SUCCESS
+    Write-Log "Collecte terminee - Total: $totalDelegations delegations - Duree: $($executionTime.ToString('mm\:ss'))" -Level SUCCESS
     Write-Status -Type Success -Message "Script termine avec succes"
 
     exit 0
