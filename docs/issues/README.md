@@ -15,7 +15,9 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
-| (aucune) | | |
+| BUG-002 | CsvPath non restaure depuis checkpoint | [!!] Critique |
+| BUG-003 | Condition finally trop restrictive | [~] Moyenne |
+| BUG-004 | Variable locale vs etat module | [-] Faible |
 
 ## Issues Terminees
 
@@ -42,3 +44,4 @@
 ---
 
 *Derniere mise a jour : 2025-12-15*
+*Issues BUG-002/003/004 ajoutees suite a audit approfondi*
