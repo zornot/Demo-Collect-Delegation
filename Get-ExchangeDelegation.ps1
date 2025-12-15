@@ -359,6 +359,7 @@ function Get-MailboxFullAccessDelegation {
 
         foreach ($permission in $permissions) {
             $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.User
+            $isOrphan = $trusteeInfo.Email -match '^S-1-5-21-'
 
             $delegationRecord = New-DelegationRecord `
                 -MailboxEmail $Mailbox.PrimarySmtpAddress `
@@ -366,7 +367,8 @@ function Get-MailboxFullAccessDelegation {
                 -TrusteeEmail $trusteeInfo.Email `
                 -TrusteeDisplayName $trusteeInfo.DisplayName `
                 -DelegationType 'FullAccess' `
-                -AccessRights 'FullAccess'
+                -AccessRights 'FullAccess' `
+                -IsOrphan $isOrphan
 
             $delegationList.Add($delegationRecord)
         }
@@ -396,6 +398,7 @@ function Get-MailboxSendAsDelegation {
 
         foreach ($permission in $permissions) {
             $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.Trustee
+            $isOrphan = $trusteeInfo.Email -match '^S-1-5-21-'
 
             $delegationRecord = New-DelegationRecord `
                 -MailboxEmail $Mailbox.PrimarySmtpAddress `
@@ -403,7 +406,8 @@ function Get-MailboxSendAsDelegation {
                 -TrusteeEmail $trusteeInfo.Email `
                 -TrusteeDisplayName $trusteeInfo.DisplayName `
                 -DelegationType 'SendAs' `
-                -AccessRights 'SendAs'
+                -AccessRights 'SendAs' `
+                -IsOrphan $isOrphan
 
             $delegationList.Add($delegationRecord)
         }
@@ -433,13 +437,16 @@ function Get-MailboxSendOnBehalfDelegation {
             $trusteeInfo = Resolve-TrusteeInfo -Identity $trustee
 
             if ($null -ne $trusteeInfo -and -not (Test-IsSystemAccount -Identity $trusteeInfo.Email)) {
+                $isOrphan = $trusteeInfo.Email -match '^S-1-5-21-'
+
                 $delegationRecord = New-DelegationRecord `
                     -MailboxEmail $Mailbox.PrimarySmtpAddress `
                     -MailboxDisplayName $Mailbox.DisplayName `
                     -TrusteeEmail $trusteeInfo.Email `
                     -TrusteeDisplayName $trusteeInfo.DisplayName `
                     -DelegationType 'SendOnBehalf' `
-                    -AccessRights 'SendOnBehalf'
+                    -AccessRights 'SendOnBehalf' `
+                    -IsOrphan $isOrphan
 
                 $delegationList.Add($delegationRecord)
             }
