@@ -747,7 +747,7 @@ try {
         # Progression tous les 10 elements ou a la fin
         if ($mailboxIndex % 10 -eq 0 -or $mailboxIndex -eq $mailboxCount) {
             $percent = [math]::Round(($mailboxIndex / $mailboxCount) * 100)
-            Write-Status -Type Action -Message "Analyse mailboxes : $mailboxIndex/$mailboxCount ($percent%)" -Indent 1 -NoNewline -CarriageReturn
+            Write-Status -Type Action -Message "Analyse mailboxes : $mailboxIndex/$mailboxCount ($percent%)" -Indent 1
         }
 
         # Collecter LastLogon si demande

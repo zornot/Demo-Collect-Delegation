@@ -186,10 +186,6 @@ function Write-Log {
 
     # Affichage console
     if (-not $NoConsole) {
-        # Saut de ligne avant WARNING/ERROR/FATAL pour ne pas couper la progression
-        if ($Level -in @('WARNING', 'ERROR', 'FATAL')) {
-            Write-Host ""
-        }
         Write-Host $logEntry -ForegroundColor $color
     }
 
