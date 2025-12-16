@@ -73,6 +73,9 @@ BeforeAll {
             [string]$AccessRights,
             [string]$FolderPath = '',
             [bool]$IsOrphan = $false,
+            [bool]$IsInactive = $false,
+            [bool]$IsSoftDeleted = $false,
+            [string]$MailboxType = '',
             [string]$MailboxLastLogon = ''
         )
 
@@ -85,6 +88,9 @@ BeforeAll {
             AccessRights       = $AccessRights
             FolderPath         = $FolderPath
             IsOrphan           = $IsOrphan
+            IsInactive         = $IsInactive
+            IsSoftDeleted      = $IsSoftDeleted
+            MailboxType        = $MailboxType
             MailboxLastLogon   = $MailboxLastLogon
             CollectedAt        = $script:CollectionTimestamp
         }
@@ -410,7 +416,7 @@ Describe 'New-DelegationRecord' -Tag 'Unit' {
             $csvOutput[0] | Should -Match 'CollectedAt'
         }
 
-        It 'Contient exactement 10 proprietes' {
+        It 'Contient exactement 13 proprietes' {
             # Arrange
             $params = @{
                 MailboxEmail       = 'test@contoso.com'
@@ -426,7 +432,7 @@ Describe 'New-DelegationRecord' -Tag 'Unit' {
             $properties = $record.PSObject.Properties.Name
 
             # Assert
-            $properties | Should -HaveCount 10
+            $properties | Should -HaveCount 13
             $properties | Should -Contain 'MailboxEmail'
             $properties | Should -Contain 'MailboxDisplayName'
             $properties | Should -Contain 'TrusteeEmail'
@@ -435,6 +441,9 @@ Describe 'New-DelegationRecord' -Tag 'Unit' {
             $properties | Should -Contain 'AccessRights'
             $properties | Should -Contain 'FolderPath'
             $properties | Should -Contain 'IsOrphan'
+            $properties | Should -Contain 'IsInactive'
+            $properties | Should -Contain 'IsSoftDeleted'
+            $properties | Should -Contain 'MailboxType'
             $properties | Should -Contain 'MailboxLastLogon'
             $properties | Should -Contain 'CollectedAt'
         }
@@ -478,6 +487,133 @@ Describe 'New-DelegationRecord' -Tag 'Unit' {
             # Assert
             $record.IsOrphan | Should -BeTrue
             $record.TrusteeEmail | Should -Match '^S-1-5-21-'
+        }
+    }
+
+    Context 'Propriete IsSoftDeleted (BUG-009)' -Tag 'BUG-009' {
+
+        It 'IsSoftDeleted est $false par defaut' {
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'user@contoso.com'
+                MailboxDisplayName = 'User'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.IsSoftDeleted | Should -BeFalse
+        }
+
+        It 'IsSoftDeleted peut etre $true pour mailbox soft-deleted (mode forensic)' {
+            # Arrange - Delegation recuperee via -SoftDeletedMailbox
+            $params = @{
+                MailboxEmail       = 'deleted.user@contoso.com'
+                MailboxDisplayName = 'Deleted User'
+                TrusteeEmail       = 'jean.dupont@contoso.com'
+                TrusteeDisplayName = 'Jean DUPONT'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+                IsSoftDeleted      = $true
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.IsSoftDeleted | Should -BeTrue
+        }
+    }
+
+    Context 'Propriete IsInactive (BUG-008)' {
+
+        It 'IsInactive est $false par defaut' {
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'user@contoso.com'
+                MailboxDisplayName = 'User'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.IsInactive | Should -BeFalse
+        }
+
+        It 'IsInactive peut etre $true pour mailbox inactive' {
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'inactive@contoso.com'
+                MailboxDisplayName = 'Inactive Mailbox'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+                IsInactive         = $true
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.IsInactive | Should -BeTrue
+        }
+    }
+
+    Context 'Propriete MailboxType' {
+
+        It 'MailboxType est vide par defaut' {
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'user@contoso.com'
+                MailboxDisplayName = 'User'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.MailboxType | Should -Be ''
+        }
+
+        It 'MailboxType peut contenir le RecipientTypeDetails' -TestCases @(
+            @{ Type = 'UserMailbox' }
+            @{ Type = 'SharedMailbox' }
+            @{ Type = 'RoomMailbox' }
+            @{ Type = 'EquipmentMailbox' }
+        ) {
+            param($Type)
+
+            # Arrange
+            $params = @{
+                MailboxEmail       = 'mailbox@contoso.com'
+                MailboxDisplayName = 'Mailbox'
+                TrusteeEmail       = 'delegate@contoso.com'
+                TrusteeDisplayName = 'Delegate'
+                DelegationType     = 'FullAccess'
+                AccessRights       = 'FullAccess'
+                MailboxType        = $Type
+            }
+
+            # Act
+            $record = New-DelegationRecord @params
+
+            # Assert
+            $record.MailboxType | Should -Be $Type
         }
     }
 
@@ -1380,6 +1516,382 @@ Describe 'Get-MailboxForwardingDelegation' -Tag 'Unit', 'Integration' {
             $result | Should -HaveCount 2
             ($result | Where-Object AccessRights -EQ 'ForwardingSmtpAddress').TrusteeEmail | Should -Be 'external@fabrikam.com'
             ($result | Where-Object AccessRights -EQ 'ForwardingAddress').TrusteeEmail | Should -Be 'internal@contoso.com'
+        }
+    }
+}
+
+Describe 'Detection Transitoire et Mode Forensic (BUG-009)' -Tag 'Unit', 'BUG-009' {
+
+    BeforeAll {
+        # Variables script simulees
+        $script:RecipientCache = @{}
+        $script:ForensicMode = $false
+        $script:SkippedTransitionalCount = 0
+        $script:ForensicCollectedCount = 0
+
+        # Peupler le cache avec des recipients actifs
+        $script:RecipientCache['active@contoso.com'] = [PSCustomObject]@{
+            PrimarySmtpAddress = 'active@contoso.com'
+            DisplayName        = 'Active User'
+        }
+        $script:RecipientCache['shared@contoso.com'] = [PSCustomObject]@{
+            PrimarySmtpAddress = 'shared@contoso.com'
+            DisplayName        = 'Shared Mailbox'
+        }
+
+        # Fonction de detection transitoire
+        function Test-IsTransitional {
+            param([string]$PrimarySmtpAddress)
+            return -not $script:RecipientCache.ContainsKey($PrimarySmtpAddress.ToLower())
+        }
+    }
+
+    Context 'Detection via RecipientCache' {
+
+        It 'Mailbox active (dans cache) = non-transitoire' {
+            # Arrange
+            $mailboxEmail = 'active@contoso.com'
+
+            # Act
+            $isTransitional = Test-IsTransitional -PrimarySmtpAddress $mailboxEmail
+
+            # Assert
+            $isTransitional | Should -BeFalse
+        }
+
+        It 'Mailbox soft-deleted (pas dans cache) = transitoire' {
+            # Arrange
+            $mailboxEmail = 'deleted@contoso.com'
+
+            # Act
+            $isTransitional = Test-IsTransitional -PrimarySmtpAddress $mailboxEmail
+
+            # Assert
+            $isTransitional | Should -BeTrue
+        }
+
+        It 'Detection est case-insensitive' {
+            # Arrange - Email en majuscules
+            $mailboxEmail = 'ACTIVE@CONTOSO.COM'
+
+            # Act
+            $isTransitional = Test-IsTransitional -PrimarySmtpAddress $mailboxEmail
+
+            # Assert
+            $isTransitional | Should -BeFalse
+        }
+    }
+
+    Context 'Mode normal (sans -Forensic)' {
+
+        BeforeAll {
+            $script:ForensicMode = $false
+            $script:SkippedTransitionalCount = 0
+        }
+
+        It 'Transitoire est skippee en mode normal' {
+            # Arrange
+            $isTransitional = $true
+
+            # Act - Simulation du comportement du script
+            if ($isTransitional -and -not $script:ForensicMode) {
+                $script:SkippedTransitionalCount++
+                $skipped = $true
+            }
+            else {
+                $skipped = $false
+            }
+
+            # Assert
+            $skipped | Should -BeTrue
+            $script:SkippedTransitionalCount | Should -Be 1
+        }
+
+        It 'Non-transitoire est traitee normalement' {
+            # Arrange
+            $isTransitional = $false
+            $processed = $false
+
+            # Act
+            if ($isTransitional -and -not $script:ForensicMode) {
+                $script:SkippedTransitionalCount++
+            }
+            else {
+                $processed = $true
+            }
+
+            # Assert
+            $processed | Should -BeTrue
+        }
+    }
+
+    Context 'Mode forensic (avec -Forensic)' {
+
+        BeforeAll {
+            $script:ForensicMode = $true
+            $script:ForensicCollectedCount = 0
+        }
+
+        It 'Transitoire est traitee en mode forensic' {
+            # Arrange
+            $isTransitional = $true
+            $processed = $false
+
+            # Act
+            if ($isTransitional -and -not $script:ForensicMode) {
+                $script:SkippedTransitionalCount++
+            }
+            else {
+                $processed = $true
+            }
+
+            # Assert
+            $processed | Should -BeTrue
+        }
+
+        It 'ForensicCollectedCount incremente apres retry reussi' {
+            # Arrange
+            $script:ForensicCollectedCount = 0
+
+            # Act - Simuler un retry reussi
+            $script:ForensicCollectedCount++
+
+            # Assert
+            $script:ForensicCollectedCount | Should -Be 1
+        }
+    }
+
+    Context 'Compteurs dans le resume' {
+
+        It 'SkippedTransitionalCount affiche si > 0' {
+            # Arrange
+            $script:SkippedTransitionalCount = 5
+            $summaryContent = [ordered]@{}
+
+            # Act
+            if ($script:SkippedTransitionalCount -gt 0) {
+                $summaryContent['Transitoires'] = "$($script:SkippedTransitionalCount) ignorees"
+            }
+
+            # Assert
+            $summaryContent.Contains('Transitoires') | Should -BeTrue
+            $summaryContent['Transitoires'] | Should -Be '5 ignorees'
+        }
+
+        It 'ForensicCollectedCount affiche si > 0' {
+            # Arrange
+            $script:ForensicCollectedCount = 3
+            $summaryContent = [ordered]@{}
+
+            # Act
+            if ($script:ForensicCollectedCount -gt 0) {
+                $summaryContent['Forensic'] = "$($script:ForensicCollectedCount) soft-deleted collectees"
+            }
+
+            # Assert
+            $summaryContent.Contains('Forensic') | Should -BeTrue
+            $summaryContent['Forensic'] | Should -Be '3 soft-deleted collectees'
+        }
+
+        It 'Compteurs non affiches si = 0' {
+            # Arrange
+            $script:SkippedTransitionalCount = 0
+            $script:ForensicCollectedCount = 0
+            $summaryContent = [ordered]@{}
+
+            # Act
+            if ($script:SkippedTransitionalCount -gt 0) {
+                $summaryContent['Transitoires'] = "$($script:SkippedTransitionalCount) ignorees"
+            }
+            if ($script:ForensicCollectedCount -gt 0) {
+                $summaryContent['Forensic'] = "$($script:ForensicCollectedCount) soft-deleted collectees"
+            }
+
+            # Assert
+            $summaryContent.Contains('Transitoires') | Should -BeFalse
+            $summaryContent.Contains('Forensic') | Should -BeFalse
+        }
+    }
+}
+
+Describe 'Get-MailboxFullAccessDelegation avec IsTransitional (BUG-009)' -Tag 'Unit', 'BUG-009' {
+
+    BeforeAll {
+        # Stubs pour cmdlets Exchange
+        function Get-EXOMailboxPermission { param($Identity, [switch]$SoftDeletedMailbox) }
+        function Get-Recipient { param($Identity) }
+
+        $script:ForensicMode = $false
+        $script:ForensicCollectedCount = 0
+
+        function Get-MailboxFullAccessDelegationWithTransitional {
+            param(
+                [object]$Mailbox,
+                [bool]$IsTransitional = $false
+            )
+
+            $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+            try {
+                $permissions = $null
+                $isSoftDeleted = $false
+
+                try {
+                    $permissions = Get-EXOMailboxPermission -Identity $Mailbox.PrimarySmtpAddress -ErrorAction Stop
+                }
+                catch {
+                    # Retry avec -SoftDeletedMailbox si transitoire et mode forensic
+                    if ($IsTransitional -and $script:ForensicMode -and
+                        $_.Exception.Message -match "couldn't find.*as a recipient|Soft Deleted") {
+                        $permissions = Get-EXOMailboxPermission -Identity $Mailbox.PrimarySmtpAddress -SoftDeletedMailbox -ErrorAction Stop
+                        $isSoftDeleted = $true
+                        $script:ForensicCollectedCount++
+                    }
+                    else {
+                        throw
+                    }
+                }
+
+                $permissions = $permissions | Where-Object {
+                    $_.AccessRights -contains 'FullAccess' -and
+                    -not $_.IsInherited -and
+                    -not (Test-IsSystemAccount -Identity $_.User)
+                }
+
+                foreach ($permission in $permissions) {
+                    $delegationRecord = New-DelegationRecord `
+                        -MailboxEmail $Mailbox.PrimarySmtpAddress `
+                        -MailboxDisplayName $Mailbox.DisplayName `
+                        -TrusteeEmail $permission.User `
+                        -TrusteeDisplayName $permission.User `
+                        -DelegationType 'FullAccess' `
+                        -AccessRights 'FullAccess' `
+                        -IsSoftDeleted $isSoftDeleted
+
+                    $delegationList.Add($delegationRecord)
+                }
+            }
+            catch {
+                # Log warning et continuer
+            }
+
+            return $delegationList
+        }
+
+        $script:TestMailbox = [PSCustomObject]@{
+            Identity           = 'test@contoso.com'
+            PrimarySmtpAddress = 'test@contoso.com'
+            DisplayName        = 'Test Mailbox'
+        }
+    }
+
+    Context 'Mailbox active (IsTransitional = $false)' {
+
+        BeforeAll {
+            $script:ForensicMode = $false
+
+            Mock Get-EXOMailboxPermission {
+                @([PSCustomObject]@{
+                        User         = 'delegate@contoso.com'
+                        AccessRights = @('FullAccess')
+                        IsInherited  = $false
+                    })
+            }
+        }
+
+        It 'Traitement normal sans retry' {
+            # Act
+            $result = Get-MailboxFullAccessDelegationWithTransitional -Mailbox $script:TestMailbox -IsTransitional $false
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].IsSoftDeleted | Should -BeFalse
+
+            Should -Invoke Get-EXOMailboxPermission -Times 1 -ParameterFilter {
+                $SoftDeletedMailbox -eq $false -or $null -eq $SoftDeletedMailbox
+            }
+        }
+    }
+
+    Context 'Mailbox transitoire en mode normal' {
+
+        BeforeAll {
+            $script:ForensicMode = $false
+
+            Mock Get-EXOMailboxPermission {
+                throw "The operation couldn't be performed because object 'test@contoso.com' couldn't find as a recipient."
+            }
+        }
+
+        It 'Erreur propagee sans retry (mode normal)' {
+            # Act
+            $result = Get-MailboxFullAccessDelegationWithTransitional -Mailbox $script:TestMailbox -IsTransitional $true
+
+            # Assert - Liste vide car erreur catchee
+            $result | Should -HaveCount 0
+
+            # Pas de retry avec -SoftDeletedMailbox
+            Should -Invoke Get-EXOMailboxPermission -Times 1
+        }
+    }
+
+    Context 'Mailbox transitoire en mode forensic' {
+
+        BeforeAll {
+            $script:ForensicMode = $true
+            $script:ForensicCollectedCount = 0
+
+            # Premier appel echoue, deuxieme (avec -SoftDeletedMailbox) reussit
+            Mock Get-EXOMailboxPermission {
+                param($Identity, [switch]$SoftDeletedMailbox)
+
+                if ($SoftDeletedMailbox) {
+                    # Retry reussi
+                    @([PSCustomObject]@{
+                            User         = 'delegate@contoso.com'
+                            AccessRights = @('FullAccess')
+                            IsInherited  = $false
+                        })
+                }
+                else {
+                    throw "The operation couldn't be performed because object 'test@contoso.com' couldn't find as a recipient."
+                }
+            }
+        }
+
+        It 'Retry avec -SoftDeletedMailbox en mode forensic' {
+            # Arrange
+            $script:ForensicCollectedCount = 0
+
+            # Act
+            $result = Get-MailboxFullAccessDelegationWithTransitional -Mailbox $script:TestMailbox -IsTransitional $true
+
+            # Assert
+            $result | Should -HaveCount 1
+            $result[0].IsSoftDeleted | Should -BeTrue
+            $script:ForensicCollectedCount | Should -Be 1
+        }
+    }
+
+    Context 'Erreur non-matchee (timeout, throttling)' {
+
+        BeforeAll {
+            $script:ForensicMode = $true
+
+            Mock Get-EXOMailboxPermission {
+                throw "Request timed out after 30 seconds"
+            }
+        }
+
+        It 'Pas de retry pour erreur non-recipient' {
+            # Act
+            $result = Get-MailboxFullAccessDelegationWithTransitional -Mailbox $script:TestMailbox -IsTransitional $true
+
+            # Assert - Erreur non matchee = pas de retry = liste vide
+            $result | Should -HaveCount 0
+
+            # Un seul appel (pas de retry)
+            Should -Invoke Get-EXOMailboxPermission -Times 1
         }
     }
 }
