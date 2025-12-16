@@ -109,7 +109,10 @@ param(
     [switch]$Force,
 
     [Parameter(Mandatory = $false)]
-    [switch]$NoResume
+    [switch]$NoResume,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$Forensic
 )
 
 #region Configuration
@@ -245,6 +248,11 @@ $script:SystemAccountPatterns = @(
 
 # Cache global des recipients pour eviter appels API redondants
 $script:RecipientCache = @{}
+
+# Mode forensic (collecte permissions soft-deleted)
+$script:ForensicMode = $false
+$script:SkippedTransitionalCount = 0
+$script:ForensicCollectedCount = 0
 
 #endregion Configuration
 
@@ -479,6 +487,7 @@ function New-DelegationRecord {
         [string]$FolderPath = '',
         [bool]$IsOrphan = $false,
         [bool]$IsInactive = $false,
+        [bool]$IsSoftDeleted = $false,
         [string]$MailboxType = '',
         [string]$MailboxLastLogon = ''
     )
@@ -493,6 +502,7 @@ function New-DelegationRecord {
         FolderPath         = $FolderPath
         IsOrphan           = $IsOrphan
         IsInactive         = $IsInactive
+        IsSoftDeleted      = $IsSoftDeleted
         MailboxType        = $MailboxType
         MailboxLastLogon   = $MailboxLastLogon
         CollectedAt        = $script:CollectionTimestamp
@@ -504,18 +514,38 @@ function Get-MailboxFullAccessDelegation {
     .SYNOPSIS
         Recupere les permissions FullAccess sur une mailbox.
     #>
-    param([object]$Mailbox)
+    param(
+        [object]$Mailbox,
+        [bool]$IsTransitional = $false
+    )
 
     $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
 
     try {
-        # Utiliser PrimarySmtpAddress (best practice MS) au lieu de Identity
-        $permissions = Get-EXOMailboxPermission -Identity $Mailbox.PrimarySmtpAddress -ErrorAction Stop |
-            Where-Object {
-                $_.AccessRights -contains 'FullAccess' -and
-                -not $_.IsInherited -and
-                -not (Test-IsSystemAccount -Identity $_.User)
+        $permissions = $null
+        $isSoftDeleted = $false
+
+        try {
+            $permissions = Get-EXOMailboxPermission -Identity $Mailbox.PrimarySmtpAddress -ErrorAction Stop
+        }
+        catch {
+            # Retry avec -SoftDeletedMailbox si transitoire et mode forensic
+            if ($IsTransitional -and $script:ForensicMode -and
+                $_.Exception.Message -match "couldn't find.*as a recipient|Soft Deleted") {
+                $permissions = Get-EXOMailboxPermission -Identity $Mailbox.PrimarySmtpAddress -SoftDeletedMailbox -ErrorAction Stop
+                $isSoftDeleted = $true
+                $script:ForensicCollectedCount++
             }
+            else {
+                throw
+            }
+        }
+
+        $permissions = $permissions | Where-Object {
+            $_.AccessRights -contains 'FullAccess' -and
+            -not $_.IsInherited -and
+            -not (Test-IsSystemAccount -Identity $_.User)
+        }
 
         foreach ($permission in $permissions) {
             $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.User
@@ -528,7 +558,8 @@ function Get-MailboxFullAccessDelegation {
                 -TrusteeDisplayName $trusteeInfo.DisplayName `
                 -DelegationType 'FullAccess' `
                 -AccessRights 'FullAccess' `
-                -IsOrphan $isOrphan
+                -IsOrphan $isOrphan `
+                -IsSoftDeleted $isSoftDeleted
 
             $delegationList.Add($delegationRecord)
         }
@@ -545,16 +576,37 @@ function Get-MailboxSendAsDelegation {
     .SYNOPSIS
         Recupere les permissions SendAs sur une mailbox.
     #>
-    param([object]$Mailbox)
+    param(
+        [object]$Mailbox,
+        [bool]$IsTransitional = $false
+    )
 
     $delegationList = [System.Collections.Generic.List[PSCustomObject]]::new()
 
     try {
-        $permissions = Get-RecipientPermission -Identity $Mailbox.Identity -ErrorAction Stop |
-            Where-Object {
-                $_.AccessRights -contains 'SendAs' -and
-                -not (Test-IsSystemAccount -Identity $_.Trustee)
+        $permissions = $null
+        $isSoftDeleted = $false
+
+        try {
+            $permissions = Get-RecipientPermission -Identity $Mailbox.Identity -ErrorAction Stop
+        }
+        catch {
+            # Get-RecipientPermission n'a pas -SoftDeletedMailbox
+            # En mode forensic, on log et retourne vide
+            if ($IsTransitional -and $script:ForensicMode -and
+                $_.Exception.Message -match "couldn't find.*as a recipient|Soft Deleted") {
+                Write-Log "SendAs non disponible pour mailbox soft-deleted: $($Mailbox.PrimarySmtpAddress)" -Level DEBUG -NoConsole
+                return $delegationList
             }
+            else {
+                throw
+            }
+        }
+
+        $permissions = $permissions | Where-Object {
+            $_.AccessRights -contains 'SendAs' -and
+            -not (Test-IsSystemAccount -Identity $_.Trustee)
+        }
 
         foreach ($permission in $permissions) {
             $trusteeInfo = Resolve-TrusteeInfo -Identity $permission.Trustee
@@ -567,7 +619,8 @@ function Get-MailboxSendAsDelegation {
                 -TrusteeDisplayName $trusteeInfo.DisplayName `
                 -DelegationType 'SendAs' `
                 -AccessRights 'SendAs' `
-                -IsOrphan $isOrphan
+                -IsOrphan $isOrphan `
+                -IsSoftDeleted $isSoftDeleted
 
             $delegationList.Add($delegationRecord)
         }
@@ -633,7 +686,7 @@ function Get-MailboxCalendarDelegation {
 
     try {
         # Detecter le nom localise du calendrier via FolderType (toujours en anglais)
-        $calendarFolder = Get-EXOMailboxFolderStatistics -Identity $Mailbox.PrimarySmtpAddress -FolderScope Calendar -ErrorAction Stop |
+        $calendarFolder = Get-EXOMailboxFolderStatistics -Identity $Mailbox.PrimarySmtpAddress -Folderscope Calendar -ErrorAction Stop |
             Where-Object { $_.FolderType -eq 'Calendar' } |
             Select-Object -First 1
 
@@ -837,6 +890,11 @@ try {
     # Collection des delegations
     Write-Status -Type Action -Message "Collecte des delegations..."
 
+    # Mode forensic et compteurs transitoires
+    $script:ForensicMode = $Forensic.IsPresent
+    $script:SkippedTransitionalCount = 0
+    $script:ForensicCollectedCount = 0
+
     $allDelegations = [System.Collections.Generic.List[PSCustomObject]]::new()
 
     $statsPerType = @{
@@ -893,7 +951,7 @@ try {
         $csvHeader = @(
             'MailboxEmail', 'MailboxDisplayName', 'TrusteeEmail', 'TrusteeDisplayName',
             'DelegationType', 'AccessRights', 'FolderPath', 'IsOrphan',
-            'IsInactive', 'MailboxType', 'MailboxLastLogon', 'CollectedAt'
+            'IsInactive', 'IsSoftDeleted', 'MailboxType', 'MailboxLastLogon', 'CollectedAt'
         )
         $csvHeader -join ',' | Set-Content -Path $exportFilePath -Encoding UTF8
         Write-Log "CSV initialise: $exportFilePath" -Level DEBUG -NoConsole
@@ -941,6 +999,22 @@ try {
                 continue
             }
 
+            # Detection mailbox transitoire (pas dans le cache des recipients valides)
+            $isTransitional = -not $script:RecipientCache.ContainsKey($mailbox.PrimarySmtpAddress.ToLower())
+
+            if ($isTransitional) {
+                if ($script:ForensicMode) {
+                    # Mode forensic : on continue avec retry dans les fonctions de collecte
+                    Write-Log "Mailbox $($mailbox.PrimarySmtpAddress) transitoire (forensic mode - retry actif)" -Level INFO -NoConsole
+                }
+                else {
+                    # Mode normal : skip immediat
+                    Write-Log "Mailbox $($mailbox.PrimarySmtpAddress) ignoree (recipient invalide, utiliser -Forensic pour inclure)" -Level INFO -NoConsole
+                    $script:SkippedTransitionalCount++
+                    continue
+                }
+            }
+
             # Collecter LastLogon si demande
             $mailboxLastLogon = ''
             if ($IncludeLastLogon) {
@@ -960,7 +1034,7 @@ try {
             $mailboxDelegations = [System.Collections.Generic.List[PSCustomObject]]::new()
 
             # FullAccess
-            $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox
+            $fullAccessDelegations = Get-MailboxFullAccessDelegation -Mailbox $mailbox -IsTransitional $isTransitional
             $statsPerType.FullAccess += $fullAccessDelegations.Count
             foreach ($delegation in $fullAccessDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
@@ -970,7 +1044,7 @@ try {
             }
 
             # SendAs
-            $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox
+            $sendAsDelegations = Get-MailboxSendAsDelegation -Mailbox $mailbox -IsTransitional $isTransitional
             $statsPerType.SendAs += $sendAsDelegations.Count
             foreach ($delegation in $sendAsDelegations) {
                 $delegation.MailboxLastLogon = $mailboxLastLogon
@@ -1151,6 +1225,13 @@ try {
         'Forwarding'   = $statsPerType.Forwarding + $existingStats.Forwarding
         'TOTAL'        = $totalDelegations
         'Orphelins'    = $orphansInExport
+    }
+
+    if ($script:SkippedTransitionalCount -gt 0) {
+        $summaryContent['Transitoires'] = "$($script:SkippedTransitionalCount) ignorees"
+    }
+    if ($script:ForensicCollectedCount -gt 0) {
+        $summaryContent['Forensic'] = "$($script:ForensicCollectedCount) soft-deleted collectees"
     }
 
     if ($CleanupOrphans -and $orphanCount -gt 0) {
