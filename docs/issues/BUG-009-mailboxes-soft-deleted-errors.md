@@ -414,5 +414,6 @@ Labels : bug resilience exchange-online forensic moyenne
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| Statut | CLOSED |
+| Commit | c6e538d |
 | Branche | fix/BUG-009-mailboxes-soft-deleted-errors |
