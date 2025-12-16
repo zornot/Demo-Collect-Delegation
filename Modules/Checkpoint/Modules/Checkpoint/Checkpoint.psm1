@@ -181,7 +181,7 @@ function Initialize-Checkpoint {
     $script:CheckpointState = @{
         SessionId      = $SessionId
         KeyProperty    = $Config.KeyProperty
-        Interval       = $Config.Interval
+        Interval       = if ($Config.ContainsKey('Interval')) { $Config.Interval } else { 50 }
         MaxAgeHours    = if ($Config.ContainsKey('MaxAgeHours')) { $Config.MaxAgeHours } else { 24 }
         CheckpointFile = Join-Path $CheckpointPath "$SessionId.checkpoint.json"
         CsvPath        = $CsvPath
