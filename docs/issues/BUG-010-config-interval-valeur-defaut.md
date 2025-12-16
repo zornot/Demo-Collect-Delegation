@@ -98,9 +98,10 @@ Labels : bug faible checkpoint 15min
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # |
-| Statut | RESOLVED |
+| GitHub Issue | - |
+| Statut | CLOSED |
 | Branche | fix/BUG-010-config-interval-valeur-defaut |
+| Commit | d502888 |
 
 ---
 
