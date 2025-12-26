@@ -21,6 +21,7 @@
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-011 | LastLogon UPN mismatch | 2025-12-26 | local |
 | REFACTOR-002 | Remplacer MgConnection par GraphConnection | 2025-12-26 | local |
 | FEAT-013 | LastLogon via Graph Reports API | 2025-12-26 | local |
 | BUG-007 | Checkpoint sauve index en cours au lieu du dernier complete | 2025-12-15 | local |

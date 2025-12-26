@@ -101,6 +101,6 @@ Labels : bug ! lastlogon graph upn
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | local |
-| Statut | RESOLVED |
+| Statut | CLOSED |
 | Branche | fix/BUG-011-lastlogon-upn-mismatch |
-| Commit | - |
+| Commit | 574f932 |
