@@ -289,6 +289,7 @@ Labels : refactor ~ module graph
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| GitHub Issue | local |
+| Statut | CLOSED |
 | Branche | feature/REFACTOR-002-graphconnection |
+| Commit | ba34410 |
