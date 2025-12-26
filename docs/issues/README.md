@@ -15,12 +15,13 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
-| - | - | - |
+| [FEAT-012](FEAT-012-export-html-delegations.md) | Export HTML des delegations | ~ |
 
 ## Issues Terminees
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| FEAT-013 | LastLogon via Graph Reports API | 2025-12-26 | local |
 | BUG-007 | Checkpoint sauve index en cours au lieu du dernier complete | 2025-12-15 | local |
 | BUG-006 | Statistiques incorrectes en reprise checkpoint | 2025-12-15 | local |
 | FEAT-011 | Colonne MailboxType dans export CSV | 2025-12-15 | local |
@@ -42,11 +43,12 @@
 
 | ID | Titre | Raison |
 |----|-------|--------|
+| DOC-002 | Documenter limitation LastLogonTime | Remplacee par FEAT-013 (vraie solution) |
 | PERF-001 | Parallelisation collecte | Isolation runspaces Exchange incompatible |
 | FEAT-006 | TrusteeLastLogon via Graph API | Requiert Azure AD P1 (~150 USD/mois) |
 | DRY-001 | Optimisation AddRange | AddRange incompatible List[PSCustomObject] |
 
 ---
 
-*Derniere mise a jour : 2025-12-15*
-*Issues BUG-002/003/004 ajoutees suite a audit approfondi*
+*Derniere mise a jour : 2025-12-26*
+*FEAT-013 remplace DOC-002 avec solution Graph Reports API*

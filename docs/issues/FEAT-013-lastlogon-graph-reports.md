@@ -355,6 +355,7 @@ Labels : feat ! lastlogon graph performance
 
 | Champ | Valeur |
 |-------|--------|
-| GitHub Issue | # (apres gh issue create) |
-| Statut | RESOLVED |
+| GitHub Issue | local |
+| Statut | CLOSED |
 | Branche | feature/FEAT-013-lastlogon-graph |
+| Commit | 737ffab |
