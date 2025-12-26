@@ -1006,7 +1006,7 @@ try {
     Write-Status -Type Info -Message "Types inclus: $($mailboxTypes -join ', ')" -Indent 1
 
     # Recuperation des mailboxes actives
-    $allMailboxes = Get-EXOMailbox -ResultSize Unlimited -RecipientTypeDetails $mailboxTypes -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, RecipientTypeDetails, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
+    $allMailboxes = Get-EXOMailbox -ResultSize Unlimited -RecipientTypeDetails $mailboxTypes -Properties DisplayName, PrimarySmtpAddress, UserPrincipalName, ExchangeObjectId, RecipientTypeDetails, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
     $activeCount = $allMailboxes.Count
     Write-Status -Type Success -Message "$activeCount mailboxes actives trouvees" -Indent 1
 
@@ -1014,7 +1014,7 @@ try {
     $script:InactiveMailboxIds = @()
     if ($IncludeInactive) {
         Write-Status -Type Info -Message "Recuperation des mailboxes inactives..." -Indent 1
-        $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, ExchangeObjectId, RecipientTypeDetails, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
+        $inactiveMailboxes = Get-EXOMailbox -InactiveMailboxOnly -ResultSize Unlimited -Properties DisplayName, PrimarySmtpAddress, UserPrincipalName, ExchangeObjectId, RecipientTypeDetails, GrantSendOnBehalfTo, ForwardingAddress, ForwardingSmtpAddress
         $script:InactiveMailboxIds = $inactiveMailboxes | ForEach-Object { $_.ExchangeObjectId }
         $allMailboxes = @($allMailboxes) + @($inactiveMailboxes)
         Write-Status -Type Success -Message "$($inactiveMailboxes.Count) mailboxes inactives ajoutees" -Indent 1
@@ -1165,7 +1165,9 @@ try {
             # Collecter LastLogon si demande (Graph Reports API ou fallback EXO)
             $mailboxLastLogon = ''
             if ($IncludeLastLogon) {
-                $mailboxLastLogon = Get-MailboxLastLogon -UserPrincipalName $mailbox.PrimarySmtpAddress
+                # UserPrincipalName pour Graph cache, fallback sur PrimarySmtpAddress si null
+                $upnForLookup = if ($mailbox.UserPrincipalName) { $mailbox.UserPrincipalName } else { $mailbox.PrimarySmtpAddress }
+                $mailboxLastLogon = Get-MailboxLastLogon -UserPrincipalName $upnForLookup
             }
 
             # Verifier si mailbox inactive
