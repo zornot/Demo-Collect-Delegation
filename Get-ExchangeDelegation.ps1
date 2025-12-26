@@ -388,6 +388,11 @@ function Initialize-EmailActivityCache {
         }
 
         Write-Log -Message "Cache activite email charge: $($Script:EmailActivityCache.Count) utilisateurs" -Level Info -NoConsole
+        # Debug: afficher les UPNs dans le cache
+        Write-Verbose "[DEBUG] UPNs dans le cache Graph:"
+        foreach ($key in $Script:EmailActivityCache.Keys) {
+            Write-Verbose "  - $key -> $($Script:EmailActivityCache[$key].ToString('yyyy-MM-dd'))"
+        }
         return $true
     }
     catch {
@@ -422,9 +427,12 @@ function Get-MailboxLastLogon {
     if ($null -ne $Script:EmailActivityCache -and $Script:EmailActivityCache.Count -gt 0) {
         $upnLower = $UserPrincipalName.ToLower()
         if ($Script:EmailActivityCache.ContainsKey($upnLower)) {
-            return $Script:EmailActivityCache[$upnLower].ToString('dd/MM/yyyy')
+            $result = $Script:EmailActivityCache[$upnLower].ToString('dd/MM/yyyy')
+            Write-Verbose "[DEBUG] LastLogon MATCH: $upnLower -> $result"
+            return $result
         }
         # UPN non trouve dans cache Graph - pas d'activite recente
+        Write-Verbose "[DEBUG] LastLogon NO MATCH: $upnLower (not in cache)"
         return ''
     }
 
@@ -1167,6 +1175,7 @@ try {
             if ($IncludeLastLogon) {
                 # UserPrincipalName pour Graph cache, fallback sur PrimarySmtpAddress si null
                 $upnForLookup = if ($mailbox.UserPrincipalName) { $mailbox.UserPrincipalName } else { $mailbox.PrimarySmtpAddress }
+                Write-Verbose "[DEBUG] Mailbox: $($mailbox.PrimarySmtpAddress) | UPN: $($mailbox.UserPrincipalName) | Lookup: $upnForLookup"
                 $mailboxLastLogon = Get-MailboxLastLogon -UserPrincipalName $upnForLookup
             }
 
