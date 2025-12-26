@@ -32,8 +32,11 @@
     Collecte les mailbox selon -IncludeSharedMailbox/-IncludeRoomMailbox (UserMailbox par defaut).
     Utile pour analyser ou nettoyer les permissions obsoletes.
 .PARAMETER IncludeLastLogon
-    Ajouter la date de derniere connexion de la mailbox au CSV.
-    Impact performance : +1 appel API (Get-EXOMailboxStatistics) par mailbox.
+    Ajouter la date de derniere activite email de la mailbox au CSV.
+    Utilise Microsoft Graph Reports API (getEmailActivityUserDetail) pour des
+    donnees precises sans les faux positifs des assistants de mailbox.
+    Fallback automatique sur EXO si Graph non disponible.
+    Necessite permission Reports.Read.All dans l'application Graph.
 .PARAMETER Force
     Force la suppression reelle des delegations orphelines.
     Sans ce parametre, -CleanupOrphans fonctionne en mode simulation.
@@ -199,6 +202,7 @@ Import-Module "$PSScriptRoot\Modules\Write-Log\Modules\Write-Log\Write-Log.psm1"
 Import-Module "$PSScriptRoot\Modules\ConsoleUI\Modules\ConsoleUI\ConsoleUI.psm1" -Force -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\EXOConnection\Modules\EXOConnection\EXOConnection.psm1" -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\Checkpoint\Modules\Checkpoint\Checkpoint.psm1" -Force -ErrorAction Stop
+Import-Module "$PSScriptRoot\Modules\MgConnection\Modules\MgConnection\MgConnection.psm1" -Force -ErrorAction Stop
 
 # Initialiser logs avec chemin depuis config
 $logPath = Join-Path $PSScriptRoot $script:Config.Paths.Logs
@@ -320,6 +324,127 @@ function Initialize-RecipientCache {
         Write-Log "Echec chargement cache recipients: $($_.Exception.Message)" -Level WARNING -NoConsole
         # Continuer sans cache - Resolve-TrusteeInfo fera les appels individuels
     }
+}
+
+# Variables pour le cache d'activite email (Graph Reports API)
+$Script:EmailActivityCache = $null
+$Script:EXOFallbackWarned = $false
+
+function Initialize-EmailActivityCache {
+    <#
+    .SYNOPSIS
+        Charge le cache d'activite email depuis Graph Reports API.
+    .DESCRIPTION
+        Appelle getEmailActivityUserDetail une seule fois et stocke
+        les resultats dans un hashtable pour lookup O(1) par UPN.
+        Utilise Last Activity Date (activite email reelle, pas les assistants).
+    .OUTPUTS
+        [bool] $true si cache charge, $false sinon
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+
+    if ($null -ne $Script:EmailActivityCache -and $Script:EmailActivityCache.Count -gt 0) {
+        Write-Verbose "[i] Cache activite email deja charge"
+        return $true
+    }
+
+    try {
+        # Verifier connexion Graph
+        if (-not (Test-MgConnection)) {
+            Write-Log -Message "Graph non connecte - cache activite non disponible" -Level Warning
+            return $false
+        }
+
+        Write-Log -Message "Chargement cache activite email depuis Graph..." -Level Info -NoConsole
+
+        # Appel API Reports - periode 30 jours
+        $uri = "https://graph.microsoft.com/v1.0/reports/getEmailActivityUserDetail(period='D30')"
+        $response = Invoke-MgGraphRequest -Uri $uri -Method GET -OutputType HttpResponseMessage
+
+        if ($response.StatusCode -ne 200) {
+            throw "API retourne status $($response.StatusCode)"
+        }
+
+        # Lire le contenu CSV
+        $csvContent = $response.Content.ReadAsStringAsync().Result
+        $activityData = $csvContent | ConvertFrom-Csv
+
+        # Construire hashtable UPN -> LastActivityDate
+        $Script:EmailActivityCache = @{}
+        foreach ($row in $activityData) {
+            $upn = $row.'User Principal Name'
+            $lastActivity = $row.'Last Activity Date'
+
+            if (-not [string]::IsNullOrEmpty($upn) -and -not [string]::IsNullOrEmpty($lastActivity)) {
+                try {
+                    $Script:EmailActivityCache[$upn.ToLower()] = [datetime]::Parse($lastActivity)
+                }
+                catch {
+                    # Date invalide - ignorer
+                }
+            }
+        }
+
+        Write-Log -Message "Cache activite email charge: $($Script:EmailActivityCache.Count) utilisateurs" -Level Info -NoConsole
+        return $true
+    }
+    catch {
+        Write-Log -Message "Echec chargement cache Graph: $($_.Exception.Message)" -Level Warning
+        $Script:EmailActivityCache = @{}
+        return $false
+    }
+}
+
+function Get-MailboxLastLogon {
+    <#
+    .SYNOPSIS
+        Retourne la date de derniere activite email d'une mailbox.
+    .DESCRIPTION
+        Utilise le cache Graph Reports API (Last Activity Date) pour une
+        information precise sans les faux positifs des assistants de mailbox.
+        Fallback sur EXO si Graph non disponible.
+    .PARAMETER UserPrincipalName
+        UPN de l'utilisateur (email principal).
+    .OUTPUTS
+        [string] Date formatee dd/MM/yyyy ou chaine vide si non disponible.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$UserPrincipalName
+    )
+
+    # Priorite 1 : Cache Graph (donnees precises)
+    if ($null -ne $Script:EmailActivityCache -and $Script:EmailActivityCache.Count -gt 0) {
+        $upnLower = $UserPrincipalName.ToLower()
+        if ($Script:EmailActivityCache.ContainsKey($upnLower)) {
+            return $Script:EmailActivityCache[$upnLower].ToString('dd/MM/yyyy')
+        }
+        # UPN non trouve dans cache Graph - pas d'activite recente
+        return ''
+    }
+
+    # Fallback : EXO Statistics (avec warning si premiere fois)
+    if (-not $Script:EXOFallbackWarned) {
+        Write-Log -Message "Graph indisponible - fallback sur EXO (LastLogonTime inclut assistants)" -Level Warning
+        $Script:EXOFallbackWarned = $true
+    }
+
+    try {
+        $stats = Get-EXOMailboxStatistics -Identity $UserPrincipalName -ErrorAction SilentlyContinue
+        if ($stats -and $stats.LastLogonTime) {
+            return $stats.LastLogonTime.ToString('dd/MM/yyyy')
+        }
+    }
+    catch {
+        # Ignorer erreurs EXO
+    }
+
+    return ''
 }
 
 function Resolve-TrusteeInfo {
@@ -849,6 +974,28 @@ try {
     # Initialiser le cache des recipients (optimisation performance)
     Initialize-RecipientCache
 
+    # Connexion Graph et cache activite email (si -IncludeLastLogon)
+    if ($IncludeLastLogon) {
+        Write-Status -Type Action -Message "Connexion Microsoft Graph..."
+        $configPath = Join-Path $PSScriptRoot "Config\Settings.json"
+        Initialize-MgConnection -ConfigPath $configPath
+        $graphConnected = Connect-MgConnection
+
+        if ($graphConnected) {
+            Write-Status -Type Action -Message "Chargement cache activite email..." -Indent 1
+            $cacheLoaded = Initialize-EmailActivityCache
+            if ($cacheLoaded) {
+                Write-Status -Type Success -Message "Cache charge: $($Script:EmailActivityCache.Count) utilisateurs (Graph Reports)" -Indent 1
+            }
+            else {
+                Write-Status -Type Warning -Message "Fallback EXO pour LastLogon (moins precis)" -Indent 1
+            }
+        }
+        else {
+            Write-Status -Type Warning -Message "Graph non disponible - fallback EXO pour LastLogon" -Indent 1
+        }
+    }
+
     # Construction du filtre de type de mailbox
     Write-Status -Type Action -Message "Recuperation des mailboxes..."
 
@@ -1015,13 +1162,10 @@ try {
                 }
             }
 
-            # Collecter LastLogon si demande
+            # Collecter LastLogon si demande (Graph Reports API ou fallback EXO)
             $mailboxLastLogon = ''
             if ($IncludeLastLogon) {
-                $stats = Get-EXOMailboxStatistics -Identity $mailbox.PrimarySmtpAddress -ErrorAction SilentlyContinue
-                if ($stats -and $stats.LastLogonTime) {
-                    $mailboxLastLogon = $stats.LastLogonTime.ToString('dd/MM/yyyy')
-                }
+                $mailboxLastLogon = Get-MailboxLastLogon -UserPrincipalName $mailbox.PrimarySmtpAddress
             }
 
             # Verifier si mailbox inactive

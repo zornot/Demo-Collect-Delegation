@@ -9,7 +9,7 @@
     "retryDelaySeconds": 2,
 
     "interactive": {
-      "scopes": ["Application.Read.All", "Directory.Read.All"],
+      "scopes": ["Application.Read.All", "Directory.Read.All", "Reports.Read.All"],
       "persistCache": false,
       "$comment_persistCache": "true = cache persistant entre sessions PS (SSO via fichier .mg). false = popup a chaque nouvelle session PS."
     },
