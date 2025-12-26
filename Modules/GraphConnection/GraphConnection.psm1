@@ -501,7 +501,7 @@ function Connect-GraphConnection {
     }
 
     if (-not (Get-Module -Name Microsoft.Graph.Authentication)) {
-        Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+        Import-Module Microsoft.Graph.Authentication -Global -ErrorAction Stop
     }
 
     # Lire autoDisconnect depuis Settings.json si -NoDisconnect non specifie
