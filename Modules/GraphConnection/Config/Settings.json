@@ -1,0 +1,22 @@
+{
+    "_comment": "Configuration par defaut pour Module-GraphConnection",
+    "_version": "1.0.0",
+
+    "Authentication": {
+        "Mode": "Interactive",
+        "TenantId": "00000000-0000-0000-0000-000000000000",
+
+        "Interactive": {
+            "Scopes": ["User.Read", "Application.Read.All"],
+            "UseDeviceCode": false
+        },
+
+        "Certificate": {
+            "ClientId": "00000000-0000-0000-0000-000000000000",
+            "Thumbprint": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        },
+
+        "RetryCount": 3,
+        "RetryDelaySeconds": 2
+    }
+}

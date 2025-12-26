@@ -202,7 +202,7 @@ Import-Module "$PSScriptRoot\Modules\Write-Log\Modules\Write-Log\Write-Log.psm1"
 Import-Module "$PSScriptRoot\Modules\ConsoleUI\Modules\ConsoleUI\ConsoleUI.psm1" -Force -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\EXOConnection\Modules\EXOConnection\EXOConnection.psm1" -ErrorAction Stop
 Import-Module "$PSScriptRoot\Modules\Checkpoint\Modules\Checkpoint\Checkpoint.psm1" -Force -ErrorAction Stop
-Import-Module "$PSScriptRoot\Modules\MgConnection\Modules\MgConnection\MgConnection.psm1" -Force -ErrorAction Stop
+Import-Module "$PSScriptRoot\Modules\GraphConnection\GraphConnection.psm1" -Force -ErrorAction Stop
 
 # Initialiser logs avec chemin depuis config
 $logPath = Join-Path $PSScriptRoot $script:Config.Paths.Logs
@@ -352,7 +352,7 @@ function Initialize-EmailActivityCache {
 
     try {
         # Verifier connexion Graph
-        if (-not (Test-MgConnection)) {
+        if (-not (Test-GraphConnection)) {
             Write-Log -Message "Graph non connecte - cache activite non disponible" -Level Warning
             return $false
         }
@@ -978,10 +978,10 @@ try {
     if ($IncludeLastLogon) {
         Write-Status -Type Action -Message "Connexion Microsoft Graph..."
         $configPath = Join-Path $PSScriptRoot "Config\Settings.json"
-        Initialize-MgConnection -ConfigPath $configPath
-        $graphConnected = Connect-MgConnection
+        Initialize-GraphConnection -ConfigPath $configPath
+        $Script:GraphConnection = Connect-GraphConnection -Interactive -Scopes @('Reports.Read.All')
 
-        if ($graphConnected) {
+        if ($Script:GraphConnection.IsConnected) {
             Write-Status -Type Action -Message "Chargement cache activite email..." -Indent 1
             $cacheLoaded = Initialize-EmailActivityCache
             if ($cacheLoaded) {
@@ -1358,6 +1358,11 @@ try {
 
     # Compter les orphelins - session + existants si reprise checkpoint
     $orphansInExport = @($allDelegations | Where-Object { $_.IsOrphan -eq $true }).Count + $existingOrphansCount
+
+    # Deconnexion Graph si connecte
+    if ($Script:GraphConnection -and $Script:GraphConnection.IsConnected) {
+        $Script:GraphConnection.Disconnect()
+    }
 
     # Resume final avec Write-Box du module ConsoleUI
     $summaryContent = [ordered]@{
