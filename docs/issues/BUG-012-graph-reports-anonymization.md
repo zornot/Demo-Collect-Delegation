@@ -457,6 +457,6 @@ Invoke-MgGraphRequest -Method PATCH `
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | local |
-| Statut | RESOLVED |
+| Statut | CLOSED |
 | Branche | fix/BUG-012-lastlogon-strategy |
-| Commit | - |
+| Commit | 877b0d3 |

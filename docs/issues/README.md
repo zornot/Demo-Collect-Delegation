@@ -21,6 +21,7 @@
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-012 | LastLogon detection licence + anonymisation | 2025-12-29 | local |
 | BUG-011 | LastLogon UPN mismatch | 2025-12-26 | local |
 | REFACTOR-002 | Remplacer MgConnection par GraphConnection | 2025-12-26 | local |
 | FEAT-013 | LastLogon via Graph Reports API | 2025-12-26 | local |
