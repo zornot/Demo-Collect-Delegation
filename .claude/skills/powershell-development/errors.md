@@ -235,3 +235,5 @@ Invoke-ScriptAnalyzer -Path ./Modules -Recurse
 # Avec severite
 Invoke-ScriptAnalyzer -Path ./Modules -Recurse -Severity Warning, Error
 ```
+
+> **Details complets** : Regles critiques, faux positifs, SuppressMessageAttribute → [psscriptanalyzer.md](psscriptanalyzer.md)

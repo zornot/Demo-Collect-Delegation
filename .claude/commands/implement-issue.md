@@ -6,15 +6,21 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 # Implementation d'Issue
 
-## Etape 1 : Lecture de l'issue
+Workflow structure en 5 phases et 13 etapes pour implementer une issue.
+
+---
+
+## Phase A : Preparation
+
+### Etape 1 : Lecture de l'issue
 
 Lire le fichier `docs/issues/$ARGUMENTS.md` et extraire :
 - Le statut actuel (section SYNCHRONISATION GITHUB)
-- Le numero GitHub (doit etre renseigne)
+- Le numero GitHub (si renseigne)
 - Les etapes d'IMPLEMENTATION (sections AVANT/APRES)
 - Les criteres d'acceptation
 
-## Etape 2 : Verifications pre-implementation
+### Etape 2 : Verifications pre-implementation (APRES Etape 1)
 
 Verifier le statut :
 
@@ -23,28 +29,80 @@ Verifier le statut :
 | DRAFT | OK - Sync automatique a la fin |
 | OPEN | OK - Continuer |
 | IN_PROGRESS | WARNING - "Issue deja en cours. Continuer ?" |
-| RESOLVED | STOP - "Issue deja resolue." |
-| CLOSED | STOP - "Issue fermee." |
+| RESOLVED | **STOP** - "Issue deja resolue." |
+| CLOSED | **STOP** - "Issue fermee." |
 
-Note : Le # GitHub n'est plus requis ici. La sync se fait automatiquement a la fin.
+**BLOCKER** : STOP si statut RESOLVED ou CLOSED. Ne pas continuer.
 
-## Etape 3 : Creation de branche
+### Etape 3 : Creation de branche (APRES Etape 2)
 
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/$ARGUMENTS
+git checkout -b [type]/$ARGUMENTS
 ```
 
-Si le type est BUG, utiliser `fix/$ARGUMENTS` au lieu de `feature/`.
+| Type issue | Prefixe branche |
+|------------|-----------------|
+| BUG, FIX, SEC | `fix/` |
+| FEAT, REFACTOR, PERF, ARCH, TEST, DOC | `feature/` |
 
-## Etape 4 : Mise a jour de l'issue
+### Etape 4 : Rappel TDD (APRES Etape 3) - Conditionnel
 
-Modifier le fichier `docs/issues/$ARGUMENTS.md` :
-- Changer Statut : OPEN → IN_PROGRESS
-- Renseigner Branche : feature/$ARGUMENTS (ou fix/$ARGUMENTS)
+Extraire le type d'issue depuis $ARGUMENTS (premier segment, ex: FEAT-025 → FEAT).
 
-## Etape 5 : Afficher le plan
+**Si type dans [FEAT, BUG, SEC]**, afficher :
+
+```
+=====================================
+[i] TDD RECOMMANDE
+=====================================
+Type d'issue : [TYPE]
+
+| Type | Raison |
+|------|--------|
+| FEAT | Nouveau comportement = test = specification |
+| BUG  | Test reproduit le bug avant fix |
+| SEC  | Test prouve la faille puis sa correction |
+
+Creer les tests avant implementation ?
+> /create-test [FunctionName] $ARGUMENTS
+
+Ou repondre "skip" pour continuer sans TDD
+=====================================
+```
+
+Attendre reponse utilisateur :
+- Si `/create-test` → executer la commande
+- Si "skip" ou "non" → continuer
+
+**Si type dans [REFACTOR, PERF, DOC, TEST, ARCH]** : continuer directement.
+
+---
+
+## Phase B : Standards
+
+### Etape 5 : Charger les standards (APRES Etape 4)
+
+Pour garantir le respect des conventions :
+
+1. Lire `.claude/skills/powershell-development/SKILL.md` pour :
+   - Nommage Verb-Noun, CmdletBinding, PascalCase
+   - Error handling (-ErrorAction Stop dans try-catch)
+   - Performance (List<T>, .Where())
+   - UI console (brackets, pas emoji)
+
+2. Lire `.claude/skills/development-workflow/SKILL.md` pour :
+   - Commits atomiques
+   - Donnees test anonymisees (contoso.com)
+
+> **Pourquoi ?** L'auto-activation des skills n'est pas garantie a 100%.
+
+---
+
+## Phase C : Implementation
+
+### Etape 6 : Afficher le plan (APRES Etape 5)
 
 Afficher clairement pour l'utilisateur :
 
@@ -58,15 +116,12 @@ PLAN D'IMPLEMENTATION : $ARGUMENTS
 
 ## Criteres d'acceptation :
 [Lister les criteres de la section VALIDATION]
-
-## Apres implementation :
-git add . && git commit -m "type(scope): description
-
-Fixes #XX"
 =====================================
 ```
 
-## Etape 6 : Executer les modifications
+### Etape 7 : Executer les modifications (APRES Etape 6)
+
+**BLOCKER** : Ne pas modifier de code sans avoir affiche le plan a l'utilisateur.
 
 Pour chaque etape d'IMPLEMENTATION :
 
@@ -78,99 +133,144 @@ Pour chaque etape d'IMPLEMENTATION :
 > **ATTENTION Issues Parasites** : Si vous voyez d'autres fichiers `docs/issues/*.md`
 > dans `git status`, verifiez leur statut. Ne commitez que l'issue en cours.
 
-## Etape 7 : Finalisation
+### Etape 8 : Validation du code (APRES Etape 7)
 
-Apres toutes les modifications :
+Avant de continuer vers les tests, verifier rapidement :
 
-1. **Verifier les criteres d'acceptation** avant de continuer
+**Checklist PowerShell (si code .ps1/.psm1 modifie) :**
+- [ ] Fonctions avec `[CmdletBinding()]`
+- [ ] Nommage `Verb-Noun` avec Noun singulier
+- [ ] Variables explicites (pas `$data`, `$temp`, `$i`)
+- [ ] `-ErrorAction Stop` dans les try-catch
+- [ ] UI console avec brackets (pas emoji)
 
-2. **Mettre a jour l'issue locale** (statut → RESOLVED) :
-   - Modifier `docs/issues/$ARGUMENTS.md`
-   - Changer Statut : IN_PROGRESS → RESOLVED
-   - Ajouter Commit Resolution : [hash]
+**Modules existants :**
+- Verifier `Modules/` avant de creer une nouvelle fonction
+- Eviter de dupliquer une fonction existante
 
-2.5. **Verification issues stagees** (OBLIGATOIRE avant commit) :
+**Checklist TDD (si fichiers .ps1/.psm1 crees) :**
+- [ ] Tests nouveau code : Si fichiers .ps1/.psm1 crees, tests existent ?
+- [ ] Tests passent : `Invoke-Pester -Path ./Tests` sans erreur
 
-   Avant de commiter, verifier les fichiers `docs/issues/*.md` stages :
+Si tests manquants pour nouveau code :
+```
+[!] Code cree sans tests :
+    - [NomScript].ps1 (X fonctions)
+    Creer tests : /create-test <FunctionName>
+```
 
-   ```bash
-   git diff --cached --name-only | grep "docs/issues/"
-   ```
+**Si violation detectee** : Corriger avant de continuer.
 
-   Pour CHAQUE issue trouvee :
-   - Si c'est `$ARGUMENTS.md` : OK (issue en cours)
-   - Si c'est une AUTRE issue : Verifier son statut
+> **HORS SCOPE** : Les modules installes via `/bootstrap-project` sont deja testes.
 
-   **Regle** : Ne JAMAIS commiter une issue avec statut DRAFT ou OPEN
-   sauf si c'est l'issue en cours d'implementation.
+### Etape 9 : Execution des tests (APRES Etape 8)
 
-   Si issue non liee detectee :
-   ```bash
-   git reset docs/issues/[issue-non-liee].md
-   ```
+**BLOCKER** : Ne pas continuer si validation code a detecte des violations.
 
-3. **Commit atomique** (inclut l'issue mise a jour) :
-   ```bash
-   git add .
-   git commit -m "type(scope): description
+Si le projet contient des tests Pester (`Tests/` non vide) :
 
-   Fixes #[numero]"
-   ```
+```powershell
+Invoke-Pester -Path ./Tests -Output Detailed
+```
 
-4. **Merge et push** :
-   ```bash
-   git checkout main
-   git merge feature/$ARGUMENTS
-   git push origin main
-   git branch -d feature/$ARGUMENTS
-   ```
+| Resultat | Action |
+|----------|--------|
+| Tous passent | Continuer vers finalisation |
+| Echecs | Corriger avant de continuer |
+| Pas de tests et type FEAT/BUG/SEC | Warning - proposer /create-test |
 
-   Note: `Fixes #XX` ferme automatiquement l'issue GitHub au push.
+---
 
-5. **Mettre a jour l'issue locale** (statut → CLOSED) + SESSION-STATE :
-   - Modifier `docs/issues/$ARGUMENTS.md` : Statut → CLOSED
-   - Modifier `docs/SESSION-STATE.md` : Issue Active → Aucune
-   - Mettre a jour `docs/issues/README.md` (progression)
+## Phase D : Finalisation
 
-## Etape 8 : Post-implementation
+### Etape 10 : Mise a jour issue RESOLVED (APRES Etape 9)
 
-Le skill `progress-tracking` gere automatiquement :
-- Mise a jour de `docs/issues/README.md` (section Issues Terminees)
-- Format : `[TYPE-XXX](TYPE-XXX-*.md) | Titre | YYYY-MM-DD`
+1. Verifier les criteres d'acceptation de l'issue
+2. Modifier `docs/issues/$ARGUMENTS.md` :
+   - Statut : IN_PROGRESS → RESOLVED
+
+### Etape 11 : Commit et merge (APRES Etape 10)
+
+**BLOCKER** : Ne pas commit si tests echouent (Etape 9).
+
+**11.1 Verification issues parasites (OBLIGATOIRE)** :
+
+```bash
+git diff --cached --name-only | grep "docs/issues/"
+```
+
+Pour CHAQUE issue trouvee :
+- Si c'est `$ARGUMENTS.md` : OK (issue en cours)
+- Si c'est une AUTRE issue : Verifier son statut
+
+**Regle** : Ne JAMAIS commiter une issue DRAFT ou OPEN sauf l'issue en cours.
+
+Si issue non liee detectee :
+```bash
+git reset docs/issues/[issue-non-liee].md
+```
+
+**11.2 Commit atomique** :
+
+```bash
+git add .
+git commit -m "type(scope): description
+
+Fixes #[numero]"
+```
+
+**11.3 Merge et push** :
+
+```bash
+git checkout main
+git merge [type]/$ARGUMENTS
+git push origin main
+git branch -d [type]/$ARGUMENTS
+```
+
+### Etape 12 : Mise a jour README (APRES Etape 11)
+
+1. Ouvrir `docs/issues/README.md`
+2. Deplacer l'issue de "A Faire" vers "Terminees"
+3. Ajouter la date : `| [TYPE-XXX](...) | Titre | YYYY-MM-DD |`
+4. Mettre a jour la section Progression
 
 **Analyser les issues restantes** :
-   - Lister les issues dans `docs/issues/` avec statut DRAFT ou OPEN
-   - Identifier la prochaine priorite selon :
-     - Symbole priorite : \`!!\` > \`!\` > \`~\` > \`-\`
-     - Dependances (bloquee par)
-     - Effort (preferer les rapides pour momentum)
+- Lister les issues avec statut DRAFT ou OPEN
+- Identifier la prochaine priorite : \`!!\` > \`!\` > \`~\` > \`-\`
 
-3. **Proposer la suite** :
-   ```
-   =====================================
-   ISSUE TERMINEE : [TYPE-XXX]
-   =====================================
+**Proposer la suite** :
+```
+=====================================
+ISSUE TERMINEE : [TYPE-XXX]
+=====================================
 
-   Issues restantes : [N]
-   Prochaine recommandee : TYPE-YYY - [Titre]
-   Raison : [Priorite / Pas de dependance / Effort court]
+Issues restantes : [N]
+Prochaine recommandee : TYPE-YYY - [Titre]
+Raison : [Priorite / Effort court]
 
-   > Implementer avec : /implement-issue TYPE-YYY
-   > Ou : /session-save pour sauvegarder et /clear
-   =====================================
-   ```
+> /implement-issue TYPE-YYY
+> ou /session-save puis /clear
+=====================================
+```
 
-## Etape 9 : Synchronisation GitHub finale (AUTOMATIQUE)
+---
 
-### 9.1 Creer l'issue GitHub (si pas de #)
+## Phase E : Synchronisation
 
-Si GitHub Issue = # (vide) :
+### Etape 13 : Sync GitHub (APRES Etape 12)
+
+**BLOCKER** : Verifier que push main reussi avant sync GitHub.
+
+**13.1 Creer l'issue GitHub (si pas de #)** :
+
 ```bash
 gh issue create --title "[TYPE-XXX] Titre" --body-file docs/issues/$ARGUMENTS.md
 ```
-Capturer le numero retourne et mettre a jour le fichier local.
 
-### 9.2 Fermer l'issue GitHub
+Capturer le numero retourne.
+
+**13.2 Fermer l'issue GitHub** :
 
 ```bash
 gh issue close [numero] --comment "Resolved in commit [hash]
@@ -179,13 +279,13 @@ Implementation complete.
 See: docs/issues/$ARGUMENTS.md"
 ```
 
-### 9.3 Mettre a jour le fichier local
+**13.3 Mettre a jour le fichier local** :
 
 - GitHub Issue : #XX (si nouveau)
 - Statut : RESOLVED → CLOSED
 - Commit : [hash]
 
-### 9.4 Confirmation
+**13.4 Confirmation finale** :
 
 ```
 =====================================
@@ -193,6 +293,6 @@ See: docs/issues/$ARGUMENTS.md"
 =====================================
 Fichier : docs/issues/$ARGUMENTS.md
 GitHub  : #XX (closed)
-Commit  : abc1234
+Commit  : [hash]
 =====================================
 ```

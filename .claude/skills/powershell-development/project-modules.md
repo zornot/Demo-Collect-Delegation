@@ -40,15 +40,20 @@ Chaque module dans `Modules/` devrait avoir :
 ```
 Modules/
 └── NomModule/
-    ├── CLAUDE.md        # Documentation pour Claude (prioritaire)
-    ├── README.md        # Documentation humaine
-    ├── NomModule.psm1   # Module principal
-    └── NomModule.psd1   # Manifeste (optionnel)
+    ├── NomModule.psd1        # Manifeste
+    ├── NomModule.psm1        # Code principal
+    ├── CLAUDE.md             # Documentation AI (< 200 lignes)
+    ├── README.md             # Documentation complete
+    └── Settings.example.json # Configuration (si applicable)
 ```
+
+> **Format standard** : Les modules sources utilisent le format `Module/` dans leur repo.
+> Lors du bootstrap, les fichiers essentiels sont copies dans `Modules/<NomModule>/`.
 
 Le fichier `CLAUDE.md` du module contient :
 - Description du module
 - Fonctions exportees avec exemples
+- Configuration requise (si applicable)
 - Cas d'usage
 
 ## Template Import Generique
@@ -65,7 +70,7 @@ $availableModules = Get-ChildItem -Path $modulePath -Directory -ErrorAction Sile
 foreach ($moduleName in @('Write-Log', 'ConsoleUI')) {
     $moduleFile = Join-Path $modulePath "$moduleName\$moduleName.psm1"
     if (Test-Path $moduleFile) {
-        Import-Module $moduleFile -ErrorAction Stop
+        Import-Module $moduleFile -Force -ErrorAction Stop
     }
 }
 #endregion
@@ -77,3 +82,59 @@ foreach ($moduleName in @('Write-Log', 'ConsoleUI')) {
 - [ ] `CLAUDE.md` ou `README.md` de chaque module lu
 - [ ] Modules pertinents importes (pas de duplication)
 - [ ] Pas de fonctions redefinies localement si elles existent dans un module
+
+## Import de Modules Externes
+
+Lors de l'import d'un module depuis un autre projet :
+
+### Format Source Standard
+
+Les modules sources utilisent le format `Module/` :
+```
+Module-NomModule/           # Repository GitHub
+└── Module/                 # Dossier source
+    ├── NomModule.psd1
+    ├── NomModule.psm1
+    ├── CLAUDE.md
+    ├── README.md
+    └── Settings.example.json
+```
+
+### Fichiers a copier (5 essentiels)
+
+| Fichier | Role | Obligatoire |
+|---------|------|-------------|
+| `NomModule.psd1` | Manifest | OUI |
+| `NomModule.psm1` | Code | OUI |
+| `CLAUDE.md` | Ref AI (< 200 lignes) | Recommande |
+| `README.md` | Doc complete | Recommande |
+| `Settings.example.json` | Config module | Si applicable |
+
+### Fichiers a EXCLURE
+
+| Dossier/Fichier | Raison |
+|-----------------|--------|
+| `.claude/` | Config Claude Code du projet source |
+| `audit/` | Rapports d'audit (historique) |
+| `Config/` | Dossier config (Settings.example.json est a la racine) |
+| `Examples/` | Exemples (deja documentes dans README) |
+| `docs/` | Issues, SESSION-STATE, ROADMAP |
+| `Tests/` | Tests unitaires (testes dans repo source) |
+
+### Exemple copie (nouveau format)
+
+```powershell
+$source = "D:\Projets\Module-ConsoleUI\Module"  # Nouveau format
+$dest = ".\Modules\ConsoleUI"
+
+$files = @("ConsoleUI.psd1", "ConsoleUI.psm1", "CLAUDE.md", "README.md", "Settings.example.json")
+New-Item -Path $dest -ItemType Directory -Force
+foreach ($file in $files) {
+    Copy-Item -Path "$source\$file" -Destination $dest -ErrorAction SilentlyContinue
+}
+```
+
+## Reference Complete
+
+Pour la documentation exhaustive (Progressive Disclosure, sections CLAUDE.md, etc.) :
+Voir `docs/referentiel/CLAUDE-CODE-GUIDE.md` section 25.

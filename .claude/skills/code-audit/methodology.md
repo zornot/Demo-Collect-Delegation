@@ -262,6 +262,7 @@ Identifier les bugs reels avec protocole anti-faux-positifs.
 | Resource Leak | Open sans Close/Dispose | StreamReader sans finally |
 | Silent Failure | Catch vide ou trop generique | `catch { }` |
 | Race Condition | Etat partage sans synchronisation | Variable script modifiee en parallele |
+| WhatIf Incorrect | $WhatIfPreference ou proxy cmdlets | Voir `.claude/skills/powershell-development/simulation-whatif.md` |
 
 ### Livrable
 

@@ -170,14 +170,14 @@ Write-Host "  └─────────────────────
 
 ```powershell
 [CmdletBinding(SupportsShouldProcess)]
-param(
-    [switch]$WhatIf
-)
+param()
+# Note: SupportsShouldProcess ajoute automatiquement -WhatIf et -Confirm
+# Voir simulation-whatif.md pour les pieges a eviter
 
 foreach ($file in $files) {
     if ($PSCmdlet.ShouldProcess($file.Name, "Supprimer")) {
         Remove-Item -Path $file.FullName -Force
-        Write-Status -Type Success -Message "Supprimé: $($file.Name)" -Indent 1
+        Write-Status -Type Success -Message "Supprime: $($file.Name)" -Indent 1
     } else {
         Write-Status -Type WhatIf -Message "Supprimerait: $($file.Name)" -Indent 1
     }

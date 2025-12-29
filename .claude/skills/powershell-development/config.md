@@ -1,5 +1,83 @@
 # Configuration PowerShell
 
+## Regle Universelle
+
+**TOUT parametre configurable → Config/Settings.json**
+
+### Quand utiliser Settings.json
+
+| Categorie | Exemples | Section Settings |
+|-----------|----------|------------------|
+| Chemins | Logs, Output, Backup | `Paths` |
+| Connexions | Tenant, Organization, SMTP | `Exchange`, `Authentication` |
+| Comportements | Retention, Timeout, Threshold | `Retention`, `Application` |
+| Modules | Parametres specifiques module | Section dediee par module |
+
+### Pattern Modules
+
+Le bootstrap genere automatiquement les sections selon les modules installes :
+
+| Module | Section Settings.json |
+|--------|----------------------|
+| Write-Log | (aucune - utilise Initialize-Log) |
+| Checkpoint | `Checkpoint` |
+| GraphConnection | `GraphConnection` |
+| EXOConnection | (aucune - parametres directs) |
+| ConsoleUI | (aucune - module UI) |
+| [Nouveau module] | [Nouvelle section dediee] |
+
+**Regle** : Lors de l'ajout d'une fonctionnalite necesitant configuration, etendre Settings.json.
+
+---
+
+## Convention Module → Configuration
+
+Chaque module qui necessite configuration DOIT declarer ses besoins dans son `CLAUDE.md`.
+
+### Format Standard
+
+Le CLAUDE.md du module doit contenir :
+
+```markdown
+## Configuration Requise
+
+| Section | Obligatoire | Description |
+|---------|-------------|-------------|
+| `nomSection` | Oui/Non | Description courte |
+
+### Template Settings.json
+
+```json
+{
+    "nomSection": {
+        "param1": "valeur_exemple",
+        "param2": 123
+    }
+}
+```
+```
+
+### Pourquoi cette convention ?
+
+| Avantage | Explication |
+|----------|-------------|
+| **Decouverte automatique** | `/create-script` lit les besoins dynamiquement |
+| **Pas de liste hardcodee** | Nouveau module = ajouter section, rien d'autre |
+| **Auto-documentation** | Le module documente ses propres besoins |
+| **Centralisation** | Settings.json reste la source unique |
+
+### Workflow /create-script
+
+Quand `/create-script` est execute :
+
+1. Lister les modules dans `Modules/`
+2. Identifier les modules utilises par le script
+3. Pour chaque module, lire son `CLAUDE.md`
+4. Extraire la section "Configuration Requise"
+5. Synchroniser Settings.json avec les sections manquantes
+
+---
+
 ## Pattern Configuration (MUST)
 
 ```
@@ -193,38 +271,32 @@ $secret = Get-AzKeyVaultSecret -VaultName "MyVault" -Name "MySecret"
 $cred = Import-Clixml -Path "./Config/credential.xml"
 ```
 
-## Microsoft Graph (Module-MgConnection)
+## Microsoft Graph (Module-GraphConnection)
 
 Pour les scripts necessitant une connexion Microsoft Graph, utiliser le module
-**Module-MgConnection** : https://github.com/zornot/Module-MgConnection
+**Module-GraphConnection** : https://github.com/zornot/Module-GraphConnection
 
 ### Installation
 
 ```powershell
-git clone https://github.com/zornot/Module-MgConnection.git Modules/MgConnection
+# Via /bootstrap-project (recommande)
+# Ou manuellement :
+git clone https://github.com/zornot/Module-GraphConnection.git .temp-module
+Copy-Item .temp-module/Module/* Modules/GraphConnection/ -Recurse
+Remove-Item .temp-module -Recurse -Force
 ```
 
 ### Configuration Settings.json
 
 ```json
 {
-    "authentication": {
-        "mode": "Interactive",
+    "GraphConnection": {
+        "clientId": "00000000-0000-0000-0000-000000000000",
         "tenantId": "00000000-0000-0000-0000-000000000000",
-        "interactive": {
-            "scopes": ["Application.Read.All", "Directory.Read.All"],
-            "useWAM": false
-        },
-        "certificate": {
-            "clientId": "00000000-0000-0000-0000-000000000000",
-            "thumbprint": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-        },
-        "clientSecret": {
-            "clientId": "00000000-0000-0000-0000-000000000000",
-            "secretVariable": "MG_CLIENT_SECRET"
-        },
-        "retryCount": 3,
-        "retryDelaySeconds": 2
+        "defaultScopes": ["User.Read"],
+        "maxRetries": 3,
+        "retryDelaySeconds": 5,
+        "autoDisconnect": true
     }
 }
 ```
@@ -232,13 +304,13 @@ git clone https://github.com/zornot/Module-MgConnection.git Modules/MgConnection
 ### Usage
 
 ```powershell
-Import-Module "$PSScriptRoot\Modules\MgConnection\MgConnection.psm1"
+Import-Module "$PSScriptRoot\Modules\GraphConnection\GraphConnection.psd1" -Force -ErrorAction Stop
 
 # Initialiser et connecter
-Initialize-MgConnection -ConfigPath ".\Config\Settings.json"
-if (Connect-MgConnection) {
+$graphConfig = $config.GraphConnection
+if (Connect-GraphConnection -TenantId $graphConfig.tenantId -ClientId $graphConfig.clientId) {
     # Operations Microsoft Graph...
-    Disconnect-MgConnection
+    Disconnect-GraphConnection
 }
 ```
 

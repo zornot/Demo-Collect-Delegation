@@ -36,8 +36,6 @@ if ($toolName -in @('Read', 'Write', 'Edit')) {
     if ($filePath) {
         # Patterns de fichiers bloques (sensibles)
         $blockedPatterns = @(
-            '*Config/Settings.json',
-            '*Config\Settings.json',
             '*.key',
             '*.pem',
             '*.pfx',
@@ -68,6 +66,43 @@ if ($toolName -eq 'Bash') {
     $command = $toolInput.command
 
     if ($command) {
+        # ============================================
+        # DETECTION LECTURE FICHIERS SENSIBLES VIA BASH
+        # ============================================
+        # Comble la faille: Bash(cat .env) contourne Read deny
+
+        $readPatterns = @(
+            'cat\s+',
+            'type\s+',
+            'Get-Content\s+',
+            'gc\s+'
+        )
+
+        $sensitiveFilePatterns = @(
+            '\.env',
+            'credential',
+            'secret',
+            'password',
+            '\.key$',
+            '\.pem$',
+            '\.pfx$'
+        )
+
+        foreach ($readPat in $readPatterns) {
+            foreach ($sensitivePat in $sensitiveFilePatterns) {
+                if ($command -match "$readPat.*$sensitivePat") {
+                    @{
+                        decision = 'block'
+                        reason   = "Lecture fichier sensible bloquee: $sensitivePat"
+                    } | ConvertTo-Json -Compress
+                    exit 2
+                }
+            }
+        }
+
+        # ============================================
+        # VALIDATION COMMANDES DESTRUCTIVES
+        # ============================================
         # Patterns de commandes destructives
         $destructivePatterns = @(
             'Remove-Item.*-Recurse',
@@ -92,26 +127,51 @@ if ($toolName -eq 'Bash') {
             $targetPath = $null
 
             # Pattern pour Remove-Item -Path 'xxx' ou Remove-Item 'xxx'
-            if ($command -match 'Remove-Item\s+(?:-Path\s+)?["'']?([^"''\s]+)') {
+            # Gere les chemins avec espaces entre quotes
+            if ($command -match "Remove-Item\s+(?:-Path\s+)?'([^']+)'") {
+                # Chemin entre quotes simples
                 $targetPath = $Matches[1]
             }
-            # Pattern pour rm/del/rmdir avec chemin
+            elseif ($command -match 'Remove-Item\s+(?:-Path\s+)?"([^"]+)"') {
+                # Chemin entre quotes doubles
+                $targetPath = $Matches[1]
+            }
+            elseif ($command -match 'Remove-Item\s+(?:-Path\s+)?([^\s"'']+)') {
+                # Chemin sans quotes (pas d'espaces)
+                $targetPath = $Matches[1]
+            }
+            # Pattern pour rm/del/rmdir avec chemin (quotes ou sans)
+            elseif ($command -match "(?:rm|del|rmdir|rd)\s+[^|;]*?'([^']+)'") {
+                $targetPath = $Matches[1]
+            }
+            elseif ($command -match '(?:rm|del|rmdir|rd)\s+[^|;]*?"([^"]+)"') {
+                $targetPath = $Matches[1]
+            }
             elseif ($command -match '(?:rm|del|rmdir|rd)\s+[^|;]*?([A-Za-z]:[^\s"''|;]+|\.?\.?[/\\][^\s"''|;]+)') {
                 $targetPath = $Matches[1]
             }
 
             if ($targetPath) {
-                # Repertoire de travail du projet
-                $projectRoot = $hookInput.cwd
+                # Repertoire de travail du projet (recommandation Anthropic Dec 2025)
+                $projectRoot = if ($env:CLAUDE_PROJECT_DIR) {
+                    $env:CLAUDE_PROJECT_DIR
+                }
+                else {
+                    $hookInput.cwd
+                }
 
-                # Resoudre le chemin complet
+                # Normaliser projectRoot (enlever trailing slash)
+                $normalizedProjectRoot = [System.IO.Path]::GetFullPath($projectRoot).TrimEnd('\', '/')
+
+                # Resoudre le chemin complet (normalise)
                 $fullPath = try {
-                    if ([System.IO.Path]::IsPathRooted($targetPath)) {
+                    $resolved = if ([System.IO.Path]::IsPathRooted($targetPath)) {
                         [System.IO.Path]::GetFullPath($targetPath)
                     }
                     else {
                         [System.IO.Path]::GetFullPath((Join-Path $projectRoot $targetPath))
                     }
+                    $resolved.TrimEnd('\', '/')
                 }
                 catch {
                     $targetPath
@@ -129,7 +189,7 @@ if ($toolName -eq 'Bash') {
                 # Verifier si dans repertoire safe
                 $isSafe = $false
                 foreach ($safeDir in $safeDirectories) {
-                    $safePath = Join-Path $projectRoot $safeDir
+                    $safePath = [System.IO.Path]::GetFullPath((Join-Path $normalizedProjectRoot $safeDir)).TrimEnd('\', '/')
                     if ($fullPath.StartsWith($safePath, [StringComparison]::OrdinalIgnoreCase)) {
                         $isSafe = $true
                         break
@@ -137,8 +197,8 @@ if ($toolName -eq 'Bash') {
                 }
 
                 if (-not $isSafe) {
-                    # Verifier si hors du projet
-                    $isOutsideProject = -not $fullPath.StartsWith($projectRoot, [StringComparison]::OrdinalIgnoreCase)
+                    # Verifier si hors du projet (comparaison normalisee)
+                    $isOutsideProject = -not $fullPath.StartsWith($normalizedProjectRoot, [StringComparison]::OrdinalIgnoreCase)
 
                     # Verifier si racine de lecteur (C:\, D:\, etc.)
                     $isRootPath = $fullPath -match '^[A-Za-z]:\\?$'

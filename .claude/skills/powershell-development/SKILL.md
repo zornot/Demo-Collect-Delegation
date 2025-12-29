@@ -88,6 +88,25 @@ Get-ChildItem -Path "$PSScriptRoot\Modules" -Directory
 
 NE JAMAIS recreer une fonction qui existe dans un module. Voir [project-modules.md](project-modules.md).
 
+## Regle Critique : Configuration Centralisee
+
+**AVANT de hardcoder une valeur configurable, utiliser `Config/Settings.json`.**
+
+Parametres a externaliser :
+- Chemins (logs, output, backup)
+- Connexions (serveurs, tenants, credentials)
+- Comportements (retention, timeouts, thresholds)
+- Emails (destinataires, SMTP)
+
+```powershell
+# Charger la configuration
+$config = Get-ProjectConfig
+$logPath = $config.Paths.Logs
+$organization = $config.Exchange.Organization
+```
+
+NE JAMAIS hardcoder des valeurs qui varient selon l'environnement. Voir [config.md](config.md).
+
 ## Detailed Standards
 
 Pour les details complets, voir les fichiers dans ce skill :
@@ -106,7 +125,9 @@ Pour les details complets, voir les fichiers dans ce skill :
 | Logging Write-Log | [logging.md](logging.md) |
 | Design patterns | [patterns.md](patterns.md) |
 | Anti-patterns | [anti-patterns.md](anti-patterns.md) |
+| PSScriptAnalyzer | [psscriptanalyzer.md](psscriptanalyzer.md) |
 | Structure projet | [project-structure.md](project-structure.md) |
 | UI symboles | [ui/symbols.md](ui/symbols.md) |
 | UI fonctions | [ui/functions.md](ui/functions.md) |
 | UI templates | [ui/templates.md](ui/templates.md) |
+| Simulation WhatIf | [simulation-whatif.md](simulation-whatif.md) |

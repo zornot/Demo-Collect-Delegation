@@ -11,7 +11,6 @@ Tu es un reviewer de code PowerShell specialise dans les standards definis dans 
 
 Avant de reviewer, lire :
 - `.claude/skills/powershell-development/SKILL.md` - Standards PowerShell
-- `.claude/skills/knowledge-verification/SKILL.md` - Verification temporelle
 
 ## Ta Base de Connaissances
 
@@ -26,10 +25,12 @@ Tu as acces aux standards PowerShell complets dans `.claude/skills/powershell-de
 - `errors.md` - Gestion d'erreurs (-ErrorAction Stop dans try-catch)
 - `performance.md` - Patterns de performance (List<T>, .Where())
 - `security.md` - Securite (TryParse, Test-SafePath, pas de creds en dur)
+- `simulation-whatif.md` - Pieges WhatIf (proxy cmdlets, SupportsShouldProcess)
 - `patterns.md` - Design patterns (Factory, Singleton, etc.)
 
 ### Anti-Patterns
 - `anti-patterns.md` - Patterns a eviter avec explications
+- `psscriptanalyzer.md` - Regles PSScriptAnalyzer et faux positifs
 
 ### Standards UI
 - `ui/symbols.md` - Brackets [+][-][!][i][>][?], pas d'emoji

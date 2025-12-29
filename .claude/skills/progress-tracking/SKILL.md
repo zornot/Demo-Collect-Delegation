@@ -3,6 +3,14 @@ name: progress-tracking
 description: "Track project progress via docs/issues/README.md and SESSION-STATE.md. Use when completing issues, using /session-save or /session-end, mentioning phases or progression, or updating project milestones. Provides templates for issue tracking and session state management."
 ---
 
+## ATTENTION - Role du Skill
+
+Ce skill fournit des **TEMPLATES** et **FORMATS** de reference.
+Il ne s'execute **PAS automatiquement**.
+
+Les commandes `/create-issue` et `/implement-issue` doivent
+appliquer ces formats **EXPLICITEMENT** dans leurs instructions.
+
 # Progress Tracking
 
 Skill pour la gestion de la progression projet (docs/issues/README.md et SESSION-STATE.md).

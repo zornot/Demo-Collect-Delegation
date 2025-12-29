@@ -1,6 +1,149 @@
 # Design Patterns PowerShell
 
-## Factory Pattern
+Patterns organises en deux categories : Construction (code a copier) et Audit (violations a detecter).
+
+---
+
+## PARTIE A : Patterns de Construction (Prescriptifs)
+
+Patterns a UTILISER lors de la creation de scripts.
+Reference : `/create-script`
+
+### Structured Result
+
+Schema pour scripts de collecte avec typage explicite.
+
+```powershell
+$Script:Result = @{
+    Metadata = @{
+        StartTime    = Get-Date
+        EndTime      = $null
+        Author       = $env:USERNAME
+        ComputerName = $env:COMPUTERNAME
+    }
+    Data = @{
+        Items   = [System.Collections.Generic.List[PSCustomObject]]::new()
+        Summary = @{}
+    }
+    Status = @{
+        Success  = $true
+        Errors   = [System.Collections.Generic.List[string]]::new()
+        Warnings = [System.Collections.Generic.List[string]]::new()
+    }
+}
+
+# Usage
+$Script:Result.Data.Items.Add($item)
+$Script:Result.Status.Errors.Add("Message")
+$Script:Result.Metadata.EndTime = Get-Date
+```
+
+**Utiliser pour** : Collect-*, Audit-*, Export-*, scripts retournant donnees structurees.
+
+### Fallback API
+
+Tester disponibilite AVANT d'appeler, pas dans le catch.
+
+```powershell
+function Get-DataWithFallback {
+    [CmdletBinding()]
+    param()
+
+    $hasAccess = Test-ApiAccess  # Tester AVANT
+
+    if ($hasAccess) {
+        return Get-FullData
+    } else {
+        Write-Warning "Mode degrade: donnees limitees"
+        return Get-CachedData
+    }
+}
+
+# Test avec cache (eviter appels repetes)
+function Test-ApiAccess {
+    return Get-Cached -Key 'ApiAccess' -Compute {
+        try {
+            $null = Invoke-ApiCall -Top 1 -ErrorAction Stop
+            return $true
+        } catch { return $false }
+    } -MinutesTTL 5
+}
+```
+
+**Utiliser pour** : APIs externes (Graph, EXO), ressources optionnelles.
+
+### Throttle API
+
+Delai entre appels pour respecter rate limits.
+
+```powershell
+function Invoke-ThrottledOperation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [array]$Items,
+        [scriptblock]$Operation,
+        [int]$DelayMs = 100
+    )
+
+    $results = [System.Collections.Generic.List[PSObject]]::new()
+
+    foreach ($item in $Items) {
+        $results.Add((& $Operation $item))
+        Start-Sleep -Milliseconds $DelayMs
+    }
+
+    return $results
+}
+
+# Usage
+$users = Invoke-ThrottledOperation -Items $userIds -DelayMs 50 -Operation {
+    param($id)
+    Get-MgUser -UserId $id
+}
+```
+
+**Utiliser pour** : Boucles sur API Graph/EXO, operations en masse.
+
+**Note** : EXO non parallelisable (cmdlets non thread-safe).
+
+### Input Validation
+
+Valider tot, echouer explicitement.
+
+```powershell
+# Numerique - TryParse (pas cast)
+$days = 0
+if (-not [int]::TryParse($InputDays, [ref]$days)) {
+    throw "Valeur numerique attendue pour -Days"
+}
+if ($days -lt 1 -or $days -gt 365) {
+    throw "Days doit etre entre 1 et 365"
+}
+
+# Path - Test-Path + Resolve
+if (-not (Test-Path $InputPath -PathType Container)) {
+    throw "Chemin invalide ou inexistant: $InputPath"
+}
+$safePath = Resolve-Path $InputPath
+
+# Email - Regex simple
+if ($Email -notmatch '^[\w.+-]+@[\w.-]+\.\w+$') {
+    throw "Format email invalide"
+}
+```
+
+**Utiliser pour** : Parametres utilisateur, input externe.
+
+---
+
+## PARTIE B : Patterns d'Audit (Detection)
+
+Patterns a DETECTER lors des audits de code.
+Reference : `/audit-code`
+
+### Factory Pattern
+
 ```powershell
 class ConnectionFactory {
     static [object] Create([string]$type, [string]$connString) {
@@ -16,23 +159,24 @@ class ConnectionFactory {
 $conn = [ConnectionFactory]::Create('SqlServer', $connString)
 ```
 
-## Singleton Pattern
+### Singleton Pattern
+
 ```powershell
 class ConfigManager {
     static hidden [ConfigManager]$Instance = $null
     hidden [hashtable]$Config = @{}
-    
+
     hidden ConfigManager() {
         $this.Config = Import-PowerShellDataFile ".\config.psd1"
     }
-    
+
     static [ConfigManager] GetInstance() {
         if ($null -eq [ConfigManager]::Instance) {
             [ConfigManager]::Instance = [ConfigManager]::new()
         }
         return [ConfigManager]::Instance
     }
-    
+
     [object] Get([string]$key) { return $this.Config[$key] }
 }
 
@@ -40,17 +184,18 @@ $config = [ConfigManager]::GetInstance()
 $apiUrl = $config.Get('ApiUrl')
 ```
 
-## Builder Pattern (Fluent API)
+### Builder Pattern (Fluent API)
+
 ```powershell
 class EmailBuilder {
     hidden [string]$To
     hidden [string]$Subject
     hidden [string]$Body
-    
+
     [EmailBuilder] SetTo([string]$to) { $this.To = $to; return $this }
     [EmailBuilder] SetSubject([string]$s) { $this.Subject = $s; return $this }
     [EmailBuilder] SetBody([string]$b) { $this.Body = $b; return $this }
-    
+
     [object] Build() {
         if ([string]::IsNullOrEmpty($this.To)) { throw "To required" }
         return [PSCustomObject]@{
@@ -68,7 +213,8 @@ $email = [EmailBuilder]::new()
     .Build()
 ```
 
-## Strategy Pattern
+### Strategy Pattern
+
 ```powershell
 class GzipStrategy {
     [byte[]] Compress([byte[]]$data) {
@@ -82,9 +228,9 @@ class GzipStrategy {
 
 class Compressor {
     hidden $Strategy
-    
+
     Compressor($strategy) { $this.Strategy = $strategy }
-    
+
     [void] CompressFile([string]$in, [string]$out) {
         $data = [System.IO.File]::ReadAllBytes($in)
         $compressed = $this.Strategy.Compress($data)
@@ -93,24 +239,25 @@ class Compressor {
 }
 ```
 
-## Repository Pattern
+### Repository Pattern
+
 ```powershell
 class CustomerRepository {
     hidden [string]$FilePath
-    
+
     CustomerRepository([string]$path) { $this.FilePath = $path }
-    
+
     [object] GetById([string]$id) {
         return $this.GetAll() | Where-Object Id -eq $id | Select-Object -First 1
     }
-    
+
     [array] GetAll() {
         if (Test-Path $this.FilePath) {
             return Get-Content $this.FilePath -Raw | ConvertFrom-Json
         }
         return @()
     }
-    
+
     [void] Add([object]$customer) {
         $all = $this.GetAll()
         $all += $customer
@@ -119,7 +266,8 @@ class CustomerRepository {
 }
 ```
 
-## Caching Pattern
+### Caching Pattern
+
 ```powershell
 $script:Cache = @{
     Data = [System.Collections.Generic.Dictionary[string,object]]::new()
@@ -147,9 +295,7 @@ function Get-Cached {
 
 ---
 
-## Anti-Patterns Architecture (Audit)
-
-### Patterns a Detecter
+### Anti-Patterns Architecture
 
 | Anti-Pattern | Criteres Detection | Severite | Impact |
 |--------------|-------------------|----------|--------|
@@ -188,9 +334,9 @@ Indicateurs :
 
 ---
 
-## Principes SOLID (Metriques Proxy)
+### Principes SOLID (Metriques Proxy)
 
-### Single Responsibility Principle (SRP)
+#### Single Responsibility Principle (SRP)
 
 | Metrique | Seuil Alerte | Detection |
 |----------|--------------|-----------|
@@ -216,7 +362,7 @@ function Send-UserNotification { }
 function New-UserReport { }
 ```
 
-### Open/Closed Principle (OCP)
+#### Open/Closed Principle (OCP)
 
 | Indicateur | Probleme |
 |------------|----------|
@@ -247,7 +393,7 @@ function Export-Data {
 # Ajouter un format = ajouter une entree, pas modifier
 ```
 
-### Dependency Inversion Principle (DIP)
+#### Dependency Inversion Principle (DIP)
 
 | Indicateur | Probleme |
 |------------|----------|
@@ -274,9 +420,7 @@ function Get-UserReport {
 
 ---
 
-## Metriques Chidamber-Kemerer (CK)
-
-### Metriques pour Classes/Modules PowerShell
+### Metriques Chidamber-Kemerer (CK)
 
 | Metrique | Description | Seuil Alerte | Calcul |
 |----------|-------------|--------------|--------|
@@ -287,9 +431,7 @@ function Get-UserReport {
 | **DIT** | Depth of Inheritance | > 5 | Profondeur heritage |
 | **NOC** | Number of Children | > 10 | Classes derivees |
 
-### Adaptation PowerShell
-
-PowerShell n'etant pas purement OO, adapter les metriques :
+#### Adaptation PowerShell
 
 | Metrique CK | Equivalent PowerShell |
 |-------------|----------------------|
@@ -298,7 +440,7 @@ PowerShell n'etant pas purement OO, adapter les metriques :
 | RFC | Fonctions + cmdlets appeles |
 | LCOM | Cohesion = variables partagees entre fonctions |
 
-### Exemple Calcul CBO
+#### Exemple Calcul CBO
 
 ```powershell
 # Fichier : MonModule.psm1
@@ -317,52 +459,8 @@ function Get-UserInfo {
 
 ---
 
-## Complexite Cyclomatique
-
-### Definition
-
-```
-CC = 1 + nombre de (if, elseif, switch case, while, for, foreach, -and, -or, catch)
-```
-
-### Seuils
-
-| CC | Risque | Testabilite | Action |
-|----|--------|-------------|--------|
-| 1-10 | Faible | Facile | OK |
-| 11-20 | Modere | Moderee | Surveiller |
-| 21-50 | Eleve | Difficile | Refactoring |
-| > 50 | Tres eleve | Quasi impossible | Urgent |
-
-### Exemple
-
-```powershell
-function Process-Order {      # CC = 1 (base)
-    param($Order)
-
-    if ($Order.Status -eq 'New') {           # +1 = 2
-        if ($Order.Amount -gt 1000) {        # +1 = 3
-            if ($Order.Customer.VIP) {       # +1 = 4
-                # ...
-            } elseif ($Order.Customer.Gold) { # +1 = 5
-                # ...
-            }
-        }
-    } elseif ($Order.Status -eq 'Pending') {  # +1 = 6
-        foreach ($item in $Order.Items) {     # +1 = 7
-            if ($item.Stock -lt 0) {          # +1 = 8
-                # ...
-            }
-        }
-    }
-}
-# CC = 8 : Acceptable mais surveiller
-```
-
----
-
 ## References
 
-- Metriques SQALE : `.claude/skills/code-audit/metrics-sqale.md`
-- Methodologie audit : `.claude/skills/code-audit/methodology.md`
+- Metriques SQALE et Complexite Cyclomatique : [code-audit/metrics-sqale.md](../../code-audit/metrics-sqale.md)
+- Methodologie audit : [code-audit/methodology.md](../../code-audit/methodology.md)
 - Anti-patterns code : [anti-patterns.md](anti-patterns.md)

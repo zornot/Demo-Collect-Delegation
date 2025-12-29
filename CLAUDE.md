@@ -2,8 +2,8 @@
 
 ## Context
 - **Stack**: PowerShell 7.2+, Windows Terminal
-- **Purpose**: [Description courte du projet]
-- **Author**: [Nom]
+- **Purpose**: Récupération des délégations sur les boîtes emails.
+- **Author**: Zornot
 
 ## Project Structure
 - Script principal : `./Script.ps1`
@@ -11,20 +11,23 @@
 - Tests : `Tests/`
 - Configuration : `Config/Settings.json`
 
+<!-- MODULES_SECTION_PLACEHOLDER -->
+
 ## Slash Commands
 
 ### Development
-- `/create-script ScriptName` - Create a new script
-- `/create-function Verb-Noun` - Create a new function
+- `/create-script ScriptName` - Initialize a new script (architecture required)
 - `/create-test FunctionName` - Create Pester tests (TDD RED phase)
 - `/create-issue TYPE-XXX-titre` - Create a local issue
 - `/implement-issue TYPE-XXX-titre` - Implement + auto GitHub sync
 - `/sync-issue TYPE-XXX-titre` - Sync to GitHub for discussion (without implementing)
 - `/run-tests` - Run all Pester tests
 - `/review-code` - Review code against standards
+- `/analyze-bug description` - Analyze bug with tech research
 
 ### Audit
 - `/audit-code [chemin] [focus]` - Professional 6-phase code audit with anti-false-positives protocol
+- `/audit-assistant [scope]` - Audit structure assistant (map, check, all)
 
 ### Session Management
 - `/session-start` - Load context from previous session
@@ -33,6 +36,7 @@
 
 ### Maintenance
 - `/update-assistant <template-path> [--dry-run]` - Update .claude/ from template source
+- `/bootstrap-project` - Configure project after /init-project (modules, settings)
 
 ## Agents
 - `code-reviewer` - Reviews PowerShell code for compliance
@@ -40,6 +44,17 @@
 - `context-explorer` - Explore codebase without polluting main context (haiku)
 - `session-summarizer` - Capture session state before /clear
 - `security-auditor` - Security audit for credentials, input validation, paths
+- `tech-researcher` - Deep technical research for undocumented concepts
+- `assistant-auditor` - Cartographie et audit de l'assistant (haiku)
+
+### Usage Recommande (agents manuels)
+
+| Agent | Utiliser quand | NE PAS utiliser quand |
+|-------|----------------|----------------------|
+| `context-explorer` | Exploration >10 fichiers, decouverte architecture | Lecture fichier specifique |
+| `security-auditor` | Review securite rapide hors audit | Pendant /audit-code (contexte 6 phases requis) |
+
+Note : Ces agents sont a invocation manuelle (`@nom-agent`). L'auto-invocation n'est pas garantie.
 
 ## Skills
 
@@ -52,15 +67,27 @@ Skills actives automatiquement par Claude selon leur description :
 | `code-audit` | Methodologie audit 6 phases, anti-faux-positifs, metriques SQALE |
 | `progress-tracking` | Templates issues README et SESSION-STATE |
 | `knowledge-verification` | Verification temporelle pour technos evolutives |
+| `external-apis` | Meta-patterns pour APIs cloud (connexion, imports, proprietes) |
+
+## Hooks
+
+Protection et qualite automatiques (voir guide section 10) :
+
+| Evenement | Script | Action |
+|-----------|--------|--------|
+| PreToolUse | `security-check.ps1` | Bloque fichiers sensibles (.key, .pem, .env) |
+| PostToolUse | `format-powershell.ps1` | Formate code PowerShell |
+| PostToolUse | `analyze-powershell.ps1` | Analyse PSScriptAnalyzer |
 
 ## Workflow
 
 Toute modification de code ou configuration suit le workflow d'issues :
 
 1. **Analyser** : Identifier le probleme, proposer des solutions
-2. **Documenter** : `/create-issue TYPE-XXX-titre`
-3. **STOP - Attendre validation** : Ne pas implementer sans accord explicite
-4. **Implementer** : `/implement-issue TYPE-XXX-titre` (apres validation)
+2. **Designer** : Section DESIGN si FEAT ou SEC
+3. **Documenter** : `/create-issue TYPE-XXX-titre`
+4. **STOP - Attendre validation** : Ne pas implementer sans accord explicite
+5. **Implementer** : `/implement-issue TYPE-XXX-titre` (apres validation)
 
 **Ne jamais modifier directement sans issue. 1 issue = 1 branche = 1 commit.**
 

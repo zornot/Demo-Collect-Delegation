@@ -129,131 +129,20 @@ Measure-Command { <# code #> } | Select-Object TotalMilliseconds
 
 ---
 
-## Analyse Complexite Big O (Audit)
+## Seuils Performance PowerShell
 
-### Table de Reference Rapide
+| Pattern | Complexite | Seuil Alerte | Action |
+|---------|------------|--------------|--------|
+| `@() +=` en boucle | O(n²) | N > 50 | `List<T>.Add()` |
+| `foreach` imbrique | O(n×m) | N×M > 10000 | Evaluer refactoring |
+| `Where-Object` pipeline | O(n) + overhead | N > 10000 | `.Where()` |
+| Parallelisation | O(n/p) | N > 100, I/O | `ForEach -Parallel` |
 
-| Notation | Nom | Verdict | Seuil N Max | Exemple PowerShell |
-|----------|-----|---------|-------------|-------------------|
-| O(1) | Constant | [+] Excellent | Infini | `$dict[$key]`, `$hashset.Contains()` |
-| O(log n) | Logarithmique | [+] Excellent | Milliards | Recherche binaire |
-| O(n) | Lineaire | [+] Bon | Millions | `foreach`, `.Where()`, `Where-Object` |
-| O(n log n) | Log-lineaire | [~] Acceptable | 100 000 | `Sort-Object`, tri |
-| O(n^2) | Quadratique | [!] Probleme | 1 000 | `foreach` imbrique, `@() +=` |
-| O(n^3) | Cubique | [!!] Critique | 100 | Triple boucle |
-| O(2^n) | Exponentiel | [!!] Inacceptable | 20 | Combinatoire brute |
-
-### Patterns PowerShell et Complexite
-
-| Pattern | Complexite | Note |
-|---------|------------|------|
-| `$dict[$key]` | O(1) | Lookup hashtable |
-| `$list.Add($item)` | O(1) amorti | List generique |
-| `$array += $item` | **O(n)** | Reallocation complete ! |
-| `foreach ($x in $list)` | O(n) | Parcours lineaire |
-| `$list.Where({})` | O(n) | Filtrage methode |
-| `$list \| Where-Object` | O(n) | Pipeline (overhead) |
-| `Sort-Object` | O(n log n) | Tri natif |
-| `Group-Object` | O(n) | Groupement hashtable |
-| `foreach` dans `foreach` | **O(n x m)** | Boucles imbriquees |
-| `@() +=` dans boucle | **O(n^2)** | N reallocations |
-
-### Calcul de Complexite
-
-```
-REGLES DE CALCUL :
-
-Sequence    : O(f) + O(g) = O(max(f, g))
-Boucle      : O(iterations) x O(corps)
-Imbrication : O(n) x O(m) = O(n x m)
-Recursion   : Analyser l'arbre d'appels
-```
-
-### Quantification Performance (Template Audit)
-
-Pour chaque finding performance, fournir :
-
-```
-+---------------------------------------------------------------+
-|              QUANTIFICATION PERFORMANCE                        |
-+---------------------------------------------------------------+
-|                                                                |
-|  LOCALISATION : fichier.ps1:L42                               |
-|  PATTERN      : [description du code]                         |
-|                                                                |
-|  COMPLEXITE ACTUELLE  : O([notation])                         |
-|  COMPLEXITE OPTIMISEE : O([notation])                         |
-|                                                                |
-|  MESURES ESTIMEES :                                            |
-|  | N elements | Actuel    | Optimise  | Gain   |              |
-|  |------------|-----------|-----------|--------|              |
-|  | 100        | [X] ms    | [Y] ms    | [Z]x   |              |
-|  | 1 000      | [X] ms    | [Y] ms    | [Z]x   |              |
-|  | 10 000     | [X] ms    | [Y] ms    | [Z]x   |              |
-|                                                                |
-|  EFFORT CORRECTION    : [X] heures                            |
-|  FREQUENCE EXECUTION  : [X] fois/jour                         |
-|  GAIN QUOTIDIEN       : [X] secondes                          |
-|  ROI                  : Rentable apres [X] jours              |
-|                                                                |
-+---------------------------------------------------------------+
-```
-
-### Exemple Quantification
-
-```
-LOCALISATION : Export-Report.ps1:L87
-PATTERN      : @() += dans boucle de 5000 users
-
-COMPLEXITE ACTUELLE  : O(n^2) - 5000 reallocations
-COMPLEXITE OPTIMISEE : O(n)   - List<T>.Add()
-
-MESURES :
-| N elements | Actuel | Optimise | Gain |
-|------------|--------|----------|------|
-| 1 000      | 2s     | 0.02s    | 100x |
-| 5 000      | 50s    | 0.1s     | 500x |
-| 10 000     | 200s   | 0.2s     | 1000x|
-
-EFFORT : 30min
-FREQUENCE : 10 fois/jour
-GAIN QUOTIDIEN : 10 x 50s = 500s = 8.3min
-ROI : Rentable apres 4 jours (30min / 8.3min)
-```
-
-### Opportunites Parallelisation (PS 7+)
-
-```powershell
-# Identifier les candidats a la parallelisation :
-# - Boucles avec operations I/O (fichiers, reseau, API)
-# - Boucles avec operations independantes
-# - N > 100 elements
-
-# AVANT : Sequentiel
-foreach ($server in $servers) {
-    Test-Connection -ComputerName $server -Count 1
-}
-# Temps : N x latence
-
-# APRES : Parallele
-$servers | ForEach-Object -ThrottleLimit 20 -Parallel {
-    Test-Connection -ComputerName $_ -Count 1
-}
-# Temps : N x latence / min(N, ThrottleLimit)
-```
-
-### Seuils d'Alerte
-
-| Situation | Seuil | Action |
-|-----------|-------|--------|
-| Boucle O(n^2) avec N > 1000 | [!] Alerte | Optimiser obligatoire |
-| Boucle O(n^2) avec N > 100 | [~] Warning | Evaluer ROI |
-| `@() +=` avec N > 50 | [!] Alerte | Remplacer par List<T> |
-| Pipeline sur N > 10000 | [~] Warning | Considerer .Where() |
+> Analyse Big O complete et quantification : voir [code-audit/metrics-sqale.md](../../code-audit/metrics-sqale.md)
 
 ---
 
 ## References
 
-- Metriques SQALE : `.claude/skills/code-audit/metrics-sqale.md`
-- Methodologie audit : `.claude/skills/code-audit/methodology.md`
+- Metriques SQALE et Big O : [code-audit/metrics-sqale.md](../../code-audit/metrics-sqale.md)
+- Methodologie audit : [code-audit/methodology.md](../../code-audit/methodology.md)

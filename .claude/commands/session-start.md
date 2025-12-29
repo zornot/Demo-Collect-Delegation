@@ -1,3 +1,7 @@
+---
+description: Charge le contexte de la session precedente
+---
+
 # Demarrage de Session
 
 Initialise la session avec le contexte du travail precedent.

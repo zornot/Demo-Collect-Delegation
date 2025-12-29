@@ -2,18 +2,59 @@
 description: Review le code PowerShell selon les standards du projet
 ---
 
-Utiliser l'agent @code-reviewer pour effectuer une review de code
-dans un contexte isole (preserve les tokens du contexte principal).
+Effectuer une review de code avec processus d'evaluation temporelle.
 
 ## Arguments
 
 - `$ARGUMENTS` : Chemin du fichier ou dossier a reviewer (defaut: repertoire courant)
 
-## Comportement
+## Workflow
 
-1. L'agent `code-reviewer` est invoque dans un contexte isole
-2. Il lit les standards PowerShell et analyse le code
-3. Il retourne un rapport structure (CRITIQUE/WARNING/INFO)
+### Etape 1 : Evaluation temporelle
+
+**Lire** `.claude/skills/knowledge-verification/SKILL.md` et appliquer le processus.
+
+Date du jour : !`pwsh -NoProfile -c "(Get-Date).ToString('yyyy-MM-dd')"`
+
+| Action | Description |
+|--------|-------------|
+| Identifier | Technologies (modules, APIs, frameworks) dans $ARGUMENTS |
+| Evaluer | Auto-evaluation (seuil 9/10) + risque obsolescence |
+| Rechercher | Si condition → `[i] Invocation de l'agent tech-researcher...` |
+| Noter | Points cles pour l'agent code-reviewer |
+
+### Etape 2 : Deleguer a @code-reviewer (APRES Etape 1)
+
+**BLOCKER** : Ne pas deleguer sans avoir identifie les technologies presentes.
+
+Afficher : `[i] Invocation de l'agent code-reviewer...`
+
+Invoquer `@code-reviewer` avec le contexte :
+
+```
+Review le code dans $ARGUMENTS.
+
+[Si recherche tech-researcher effectuee :]
+Note : Recherche prealable effectuee sur [techno].
+Points cles : [resume des resultats pertinents]
+
+Retourner un rapport structure (CRITIQUE/WARNING/INFO).
+```
+
+### Etape 3 : Afficher rapport (APRES Etape 2)
+
+L'agent retourne un rapport structure. Afficher au format :
+
+```
+=====================================
+[+] REVIEW TERMINEE
+=====================================
+Fichier(s) : $ARGUMENTS
+Findings   : X CRITIQUE, Y WARNING, Z INFO
+
+[Details du rapport agent]
+=====================================
+```
 
 ## Exemple
 

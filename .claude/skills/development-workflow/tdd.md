@@ -64,6 +64,23 @@ Fixes #XX
 | `RequiresNetwork` | Necessite connexion |
 | `BUG-XXX` | Test lie a une issue |
 
+## Quand appliquer TDD
+
+> **Regle fondamentale** : TDD quand le COMPORTEMENT change
+
+| Type Issue | TDD ? | Raison |
+|------------|-------|--------|
+| **FEAT** | Oui | Nouveau comportement a specifier |
+| **BUG** | Oui | Test reproduit le bug avant fix |
+| **SEC** | Oui | Test prouve la faille puis sa correction |
+| REFACTOR | Non | Meme comportement, tests existants suffisent |
+| PERF | Non | Benchmarks, pas assertions unitaires |
+| DOC | Non | Pas de code executable |
+| TEST | Non | Deja des tests (meta-TDD = over-engineering) |
+| ARCH | Depend | Si comportement change → oui |
+
+**Note** : `/implement-issue` affiche un rappel TDD pour FEAT/BUG/SEC.
+
 ## Anti-Patterns TDD
 
 ```

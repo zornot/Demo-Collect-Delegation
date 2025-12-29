@@ -238,7 +238,7 @@ Fixes #XX
 - Mode imperatif : "Add" pas "Added" ou "Adding"
 - Sujet <= 50 caracteres
 - Corps <= 72 caracteres/ligne
-- `!` apres type = BREAKING CHANGE (ex: `feat!:`)
+- \`!\` apres type = BREAKING CHANGE (ex: \`feat!:\`)
 - **Auteur commits** : Zornot (jamais Co-Authored-By, jamais mention AI/Claude, jamais emoji)
 
 ## Rollback et Experimentation

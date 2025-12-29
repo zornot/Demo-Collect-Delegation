@@ -1,3 +1,7 @@
+---
+description: Ferme proprement la session avant /clear
+---
+
 # Fin de Session
 
 Ferme proprement la session avant /clear.

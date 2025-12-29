@@ -26,13 +26,16 @@ Types: fix | feat | refactor | perf | test | docs | style | chore | build
 ### Issue Workflow
 ```
 1. ANALYSER    -> Identifier probleme
-2. DOCUMENTER  -> /create-issue TYPE-XXX-titre
-3. STOP        -> Attendre validation explicite
-4. IMPLEMENTER -> /implement-issue TYPE-XXX-titre
+2. DESIGNER    -> Section DESIGN si FEAT/SEC
+3. DOCUMENTER  -> /create-issue TYPE-XXX-titre
+4. STOP        -> Attendre validation explicite
+5. IMPLEMENTER -> /implement-issue TYPE-XXX-titre
                   (sync GitHub automatique a la fin)
 ```
 
-Note : /sync-issue existe pour sync standalone (discussion avant implementation).
+Note : `/create-script` est reserve a l'initialisation.
+       Toute evolution passe par le workflow issue.
+       /sync-issue existe pour sync standalone (discussion avant implementation).
 
 ### Donnees Test Anonymisees
 ```

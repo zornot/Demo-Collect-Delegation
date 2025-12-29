@@ -337,73 +337,8 @@ if (-not (Test-JsonSchema -Data $obj -Schema $expectedSchema)) {
 
 ---
 
-## Trust Boundaries
-
-### Definition
-
-Une Trust Boundary separe les zones de confiance differente. Les donnees traversant une boundary doivent etre validees.
-
-### Sources de Donnees et Niveau de Confiance
-
-| Source | Niveau | Validation Requise |
-|--------|--------|-------------------|
-| Parametres utilisateur | NON FIABLE | Validation complete |
-| Fichiers utilisateur | NON FIABLE | Validation complete |
-| API externes | NON FIABLE | Validation schema |
-| Base de donnees interne | SEMI-FIABLE | Validation type |
-| Variables d'environnement | SEMI-FIABLE | Validation format |
-| Code interne | FIABLE | Minimale |
-
-### Evaluation Severite selon Trust Boundary
-
-| Condition d'exploitation | Severite Max | Justification |
-|--------------------------|--------------|---------------|
-| Necessite acces admin/filesystem | [~] MOYENNE | Attaquant deja privilegie |
-| Utilisateur authentifie standard | [!] ELEVEE | Insider threat realiste |
-| Sans authentification (public) | [!!] CRITIQUE | Exposition publique |
-| Acces physique requis | [-] FAIBLE | Scenario peu probable |
-
-### Flux Donnees Sensibles (Template Trace)
-
-Pour chaque vulnerabilite potentielle, tracer le flux :
-
-```
-[Source] : D'ou vient la donnee ?
-    |
-    v
-[Validation ?] <-- VERIFIER ICI
-    |
-    v
-[Transformation] : Modifications appliquees ?
-    |
-    v
-[Operation sensible] : SQL, fichier, commande, etc.
-    |
-    v
-[VERDICT] : Vulnerable OUI/NON + Justification
-```
-
-### Exemple de Trace
-
-```
-[Source] : $userId depuis parametre HTTP (NON FIABLE)
-    |
-    v
-[Validation ?] : ValidatePattern '^[a-zA-Z0-9]+$' sur param -> OUI
-    |
-    v
-[Transformation] : Aucune
-    |
-    v
-[Operation] : Get-ADUser -Identity $userId
-    |
-    v
-[VERDICT] : NON VULNERABLE - Validation regex bloque injection LDAP
-```
-
----
-
 ## References
 
-- Protocole anti-FP : `.claude/skills/code-audit/anti-false-positives.md`
-- Metriques : `.claude/skills/code-audit/metrics-sqale.md`
+- Trust Boundaries et protocole audit : [code-audit/methodology.md](../../code-audit/methodology.md)
+- Protocole anti-FP : [code-audit/anti-false-positives.md](../../code-audit/anti-false-positives.md)
+- Metriques SQALE : [code-audit/metrics-sqale.md](../../code-audit/metrics-sqale.md)

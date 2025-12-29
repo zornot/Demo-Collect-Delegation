@@ -175,6 +175,27 @@ Describe 'Integration' -Tag 'Integration' {
 }
 ```
 
+## PSScriptAnalyzer et Pester
+
+### Faux Positif : PSUseDeclaredVarsMoreThanAssignments
+
+PSScriptAnalyzer ne comprend pas le scope Pester. Les variables declarees dans
+`BeforeEach` sont signalees comme "non utilisees" alors qu'elles sont utilisees
+dans les blocs `It`.
+
+**Solution standard** - Ajouter en debut de fichier test :
+```powershell
+#Requires -Modules Pester
+
+# PSScriptAnalyzer ne comprend pas le scope Pester (BeforeEach -> It)
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '')]
+param()
+
+BeforeAll { ... }
+```
+
+> Reference complete : [psscriptanalyzer.md](psscriptanalyzer.md)
+
 ## Exécution
 ```powershell
 Invoke-Pester                              # Tous

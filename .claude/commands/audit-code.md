@@ -72,28 +72,15 @@ Puis lire les regles specifiques :
 - Evaluer connaissance technologie (0-10)
 - Decider strategie : complete (<1500 lignes) ou iterative
 
-#### Verification Connaissance (si < 9/10)
+#### Processus d'Evaluation Temporelle (OBLIGATOIRE)
 
-Si la connaissance evaluee est inferieure a 9/10 :
+Appliquer le processus de `knowledge-verification/SKILL.md` (deja lu a l'etape precedente) :
+- Auto-evaluation connaissance (seuil 9/10)
+- Calcul ecart temporel
+- Evaluation risque obsolescence
+- Decision : si condition remplie, afficher `[i] Invocation de l'agent tech-researcher...` puis invoquer
 
-1. **Lister les concepts non maitrises**
-   ```
-   | Concept | Connaissance | Critique pour l'audit ? |
-   |---------|--------------|------------------------|
-   | [Ex: Pester 5] | 7/10 | Oui |
-   ```
-
-2. **Appeler l'agent `tech-researcher`** pour chaque concept critique
-   ```
-   Utilise @tech-researcher pour rechercher : [concept]
-   ```
-
-3. **Integrer les resultats** dans la section Phase 0 du rapport
-
-4. **Re-evaluer** : La connaissance doit atteindre >= 9/10 avant de continuer
-
-> **IMPORTANT** : Ne jamais auditer une technologie mal maitrisee.
-> La recherche prealable evite les faux positifs et faux negatifs.
+> **IMPORTANT** : Ne jamais auditer une technologie mal maitrisee ou potentiellement obsolete.
 
 ### Phase 1 : Cartographie
 - Tracer les flux de donnees (entree -> traitement -> sortie)

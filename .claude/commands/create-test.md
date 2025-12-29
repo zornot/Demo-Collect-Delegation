@@ -1,89 +1,80 @@
 ---
 description: Cree des tests Pester pour une fonction (phase RED du TDD)
-argument-hint: NomFonction
-allowed-tools: Read, Write, Glob
+argument-hint: NomFonction [ISSUE-ID]
 ---
 
-Creer des tests Pester pour la fonction `$ARGUMENTS` en suivant les principes TDD.
+# Creation de Tests Pester
 
-## References Requises
+Utiliser l'agent @test-writer pour creer des tests Pester.
 
-1. `.claude/skills/powershell-development/pester.md` - Structure des tests, Mocks
-2. `.claude/skills/development-workflow/testing-data.md` - Donnees anonymes
-3. `.claude/skills/development-workflow/tdd.md` - Cycle TDD
+## Syntaxe
 
-## Emplacement du Fichier Test
-
-Creer : `Tests/Unit/$ARGUMENTS.Tests.ps1`
-
-## Structure du Test
-
-```powershell
-#Requires -Modules Pester
-
-BeforeAll {
-    $modulePath = Join-Path $PSScriptRoot '..' '..' 'Modules' 'NomModule' 'NomModule.psd1'
-    Import-Module $modulePath -Force
-}
-
-Describe '$ARGUMENTS' {
-
-    Context 'Cas nominal' {
-
-        It 'Retourne le resultat attendu pour un input valide' {
-            # Arrange
-            $inputValue = "valeur-test"
-
-            # Act
-            $actualResult = $ARGUMENTS -Param $inputValue
-
-            # Assert
-            $actualResult | Should -Not -BeNullOrEmpty
-        }
-    }
-
-    Context 'Gestion des erreurs' {
-
-        It 'Leve une exception pour input null' {
-            { $ARGUMENTS -Param $null } | Should -Throw
-        }
-
-        It 'Leve une exception pour chaine vide' {
-            { $ARGUMENTS -Param '' } | Should -Throw
-        }
-    }
-
-    Context 'Cas limites' {
-
-        It 'Gere les caracteres speciaux' {
-            $specialInput = "test`tavec`ttabulations"
-            { $ARGUMENTS -Param $specialInput } | Should -Not -Throw
-        }
-    }
-}
+```
+/create-test FunctionName [ISSUE-ID]
 ```
 
-## Donnees de Test
+| Argument | Requis | Description |
+|----------|--------|-------------|
+| FunctionName | Oui | Nom de la fonction a tester |
+| ISSUE-ID | Non | Reference issue (ex: FEAT-XXX) pour contexte DESIGN |
 
-| Type | Valeur |
-|------|--------|
-| Domaine | `contoso.com`, `fabrikam.com` |
-| Email | `jean.dupont@contoso.com` |
-| GUID | `00000000-0000-0000-0000-000000000001` |
+## Workflow
 
-Les donnees de production reelles ne doivent jamais apparaitre dans les tests.
-Elles pourraient finir dans le controle de version ou les logs.
+### Etape 1 : Extraire les arguments
 
-## Cycle TDD
+Parser $ARGUMENTS :
+- `$FunctionName` = premier mot de $ARGUMENTS
+- `$IssueId` = deuxieme mot de $ARGUMENTS (optionnel)
 
-1. **RED** : Ecrire le test d'abord - il DOIT echouer
-2. **GREEN** : Implementer le minimum de code
-3. **REFACTOR** : Ameliorer en gardant les tests verts
+| Argument | Extraction | Exemple |
+|----------|------------|---------|
+| FunctionName | `$ARGUMENTS.Split()[0]` | `Get-UserInfo` |
+| IssueId | `$ARGUMENTS.Split()[1]` | `FEAT-XXX` |
 
-## Checklist
+**BLOCKER** : STOP si $FunctionName est vide.
 
-- [ ] Fichier test dans `Tests/Unit/`
-- [ ] BeforeAll avec import du module
-- [ ] Describe nomme d'apres la fonction
-- [ ] Blocs Context (nominal, erreur, limites)
-- [ ] Uniquement des donnees de test anonymes
+### Etape 2 : Invoquer @test-writer (APRES Etape 1)
+
+Afficher : `[i] Invocation de l'agent test-writer...`
+
+Invoquer `@test-writer` avec le prompt :
+
+```
+Creer des tests Pester pour la fonction "$FunctionName".
+
+## Contexte Issue (si $IssueId fourni)
+Issue : $IssueId
+- Lire docs/issues/$IssueId.md
+- Extraire section DESIGN > Tests Attendus
+- Aligner les tests sur les specifications
+
+## Contexte Modules
+- Lister Modules/*.psd1 pour identifier les fonctions internes
+- Ces fonctions devront etre mockees dans les tests
+
+## Standards
+- Phase TDD : RED (tests qui echouent)
+- Emplacement : Tests/Unit/$FunctionName.Tests.ps1
+- Style : Arrange-Act-Assert
+- Donnees : contoso.com (jamais de vraies donnees)
+
+## Sortie attendue
+- Chemin du fichier cree
+- Nombre de tests (Describe/Context/It)
+- Rappel : "/run-tests pour valider"
+```
+
+### Etape 3 : Afficher resume (APRES Etape 2)
+
+L'agent retourne un resume. Afficher :
+
+```
+=====================================
+[+] TESTS CREES
+=====================================
+Fichier : Tests/Unit/$FunctionName.Tests.ps1
+Tests   : X Describe, Y Context, Z It
+
+Prochaine etape : /run-tests
+=====================================
+```

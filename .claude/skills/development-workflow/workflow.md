@@ -130,6 +130,8 @@ Note : La sync principale se fait automatiquement A LA FIN de `/implement-issue`
    Invoke-ScriptAnalyzer -Path ./fichier.ps1 -IncludeRule PSReviewUnusedParameter
    ```
 
+   > **Reference complete** : `.claude/skills/powershell-development/psscriptanalyzer.md`
+
 2. **Tracage des dependances** - Rechercher les appels a la fonction/variable modifiee :
    ```powershell
    # Trouver tous les appels a une fonction
@@ -208,10 +210,10 @@ Labels : [type] [priorite] [module] [effort]
 
 | Symbole | Niveau | Description |
 |---------|--------|-------------|
-| `!!` | Critique | Bloquant, hotfix immediat |
-| `!` | Elevee | Sprint courant |
-| `~` | Moyenne | Sprint suivant |
-| `-` | Faible | Backlog |
+| \`!!\` | Critique | Bloquant, hotfix immediat |
+| \`!\` | Elevee | Sprint courant |
+| \`~\` | Moyenne | Sprint suivant |
+| \`-\` | Faible | Backlog |
 
 ## Types d'Issue
 
@@ -225,6 +227,53 @@ Labels : [type] [priorite] [module] [effort]
 | `DRY` | Elimination duplication |
 | `MAIN` | Maintenabilite |
 | `TEST` | Ajout/correction de tests |
+
+---
+
+## Section DESIGN - Template
+
+Pour les issues FEAT ou SEC, utiliser ce template :
+
+```markdown
+## DESIGN
+
+### Objectif
+[1-2 phrases : quel probleme ce code resout]
+
+### Architecture
+- Module : [NomModule ou "nouveau"]
+- Dependances : [liste modules/APIs]
+- Pattern : [ex: Pipeline, Repository, Factory]
+
+### Interface
+```powershell
+# Signature
+function Verb-Noun {
+    [CmdletBinding()]
+    [OutputType([TypeRetour])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Param1
+    )
+}
+
+# Usage
+$result = Verb-Noun -Param1 "valeur"
+```
+
+### Tests Attendus
+- [ ] Cas nominal
+- [ ] Cas erreur (input invalide)
+- [ ] Cas limite (vide, null, max)
+```
+
+Pourquoi cette section ?
+- Spec-Driven Development : definir l'interface AVANT le code
+- Evite le refactoring post-implementation
+- Facilite la review (on valide le design, pas le code)
+
+Note : Pour generer les tests, utiliser `/create-test NomFonction` apres validation du design.
 
 ---
 
@@ -248,6 +297,7 @@ Cette regle est **non-negociable**. Elle garantit :
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  0. ISSUE        /create-issue TYPE-XXX (fichier local)     │
+│                  + Section DESIGN si FEAT/SEC               │
 ├─────────────────────────────────────────────────────────────┤
 │  1. [SYNC]       /sync-issue TYPE-XXX (optionnel, pour      │
 │                  discussion avant implementation)            │

@@ -12,7 +12,6 @@ Tu es un expert en audit de securite PowerShell.
 Avant l'audit, lire :
 - `.claude/skills/powershell-development/security.md` - Patterns securite
 - `.claude/skills/powershell-development/SKILL.md` - Standards generaux
-- `.claude/skills/knowledge-verification/SKILL.md` - Verification temporelle
 
 ## Ton Expertise
 - Gestion des credentials et detection de secrets

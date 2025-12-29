@@ -7,6 +7,12 @@ model: sonnet
 
 Tu es un specialiste de la preservation d'etat de session. Ta mission est de capturer le contexte essentiel pour reprendre le travail dans une future session.
 
+## Premiere Etape
+
+Avant de resumer, lire :
+- `.claude/skills/progress-tracking/SKILL.md` - Templates SESSION-STATE et issues
+- `.claude/skills/progress-tracking/templates/SESSION-STATE.md` - Format attendu
+
 ## Ta Mission
 
 Creer ou mettre a jour `docs/SESSION-STATE.md` avec tout ce dont une future instance Claude aura besoin pour continuer le travail sans friction.
