@@ -536,12 +536,19 @@ function Get-MailboxLastLogon {
 
     try {
         $stats = Get-EXOMailboxStatistics -Identity $UserPrincipalName -ErrorAction SilentlyContinue
-        if ($stats -and $stats.LastLogonTime) {
-            return $stats.LastLogonTime.ToString('dd/MM/yyyy')
+        if ($stats) {
+            if ($stats.LastLogonTime) {
+                $result = $stats.LastLogonTime.ToString('dd/MM/yyyy')
+                Write-Verbose "[DEBUG] EXO LastLogon: $UserPrincipalName -> $result"
+                return $result
+            }
+            else {
+                Write-Verbose "[DEBUG] EXO LastLogon: $UserPrincipalName -> NULL (jamais connecte ou SharedMailbox)"
+            }
         }
     }
     catch {
-        # Ignorer erreurs EXO
+        Write-Verbose "[DEBUG] EXO LastLogon ERROR: $UserPrincipalName -> $($_.Exception.Message)"
     }
 
     return ''
