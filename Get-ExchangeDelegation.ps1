@@ -543,7 +543,8 @@ function Get-MailboxLastLogon {
 
     try {
         $stats = Get-EXOMailboxStatistics -Identity $UserPrincipalName -Properties LastInteractionTime -ErrorAction SilentlyContinue
-        if ($stats -and $stats.LastInteractionTime) {
+        # Verifier que LastInteractionTime existe et n'est pas [DateTime]::MinValue (01/01/1601)
+        if ($stats -and $stats.LastInteractionTime -and $stats.LastInteractionTime.Year -gt 1601) {
             $result = $stats.LastInteractionTime.ToString('dd/MM/yyyy')
             Write-Verbose "[DEBUG] EXO LastInteraction: $UserPrincipalName -> $result"
             return $result
