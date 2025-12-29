@@ -496,13 +496,12 @@ function Get-MailboxLastLogon {
         Utilise la meilleure source disponible en cascade :
         1. signInActivity (P1/P2) - plus precis, jamais anonymise
         2. Graph Reports - bon compromis si non-anonymise
-        3. EXO Statistics - fallback selon type :
-           - SharedMailbox : LastInteractionTime (inclut acces delegate)
-           - UserMailbox : LastLogonTime (login direct)
+        3. EXO Statistics LastInteractionTime - fallback universel
+           Note: LastLogonTime inclut assistants, LastUserActionTime deprecated par MS
     .PARAMETER UserPrincipalName
         UPN de l'utilisateur (email principal).
     .PARAMETER MailboxType
-        Type de mailbox (UserMailbox, SharedMailbox, etc.) pour selection propriete EXO.
+        Type de mailbox (reserve pour usage futur).
     .OUTPUTS
         [string] Date formatee dd/MM/yyyy ou chaine vide si non disponible.
     #>
@@ -536,35 +535,23 @@ function Get-MailboxLastLogon {
     }
 
     # Priorite 3 : EXO Statistics (fallback)
+    # LastInteractionTime pour tous les types (LastLogonTime inclut assistants, LastUserActionTime deprecated)
     if (-not $Script:EXOFallbackWarned) {
-        Write-Log -Message "Utilisation EXO Statistics (LastInteractionTime pour SharedMailbox)" -Level Warning -NoConsole
+        Write-Log -Message "Utilisation EXO Statistics LastInteractionTime (inclut acces background)" -Level Warning -NoConsole
         $Script:EXOFallbackWarned = $true
     }
 
     try {
-        # SharedMailbox : utiliser LastInteractionTime (LastLogonTime toujours null car pas de login direct)
-        # UserMailbox : utiliser LastLogonTime (plus precis pour login direct)
-        if ($MailboxType -eq 'SharedMailbox') {
-            $stats = Get-EXOMailboxStatistics -Identity $UserPrincipalName -Properties LastInteractionTime -ErrorAction SilentlyContinue
-            if ($stats -and $stats.LastInteractionTime) {
-                $result = $stats.LastInteractionTime.ToString('dd/MM/yyyy')
-                Write-Verbose "[DEBUG] EXO LastInteraction (SharedMailbox): $UserPrincipalName -> $result"
-                return $result
-            }
-            Write-Verbose "[DEBUG] EXO LastInteraction (SharedMailbox): $UserPrincipalName -> NULL (jamais accedee)"
+        $stats = Get-EXOMailboxStatistics -Identity $UserPrincipalName -Properties LastInteractionTime -ErrorAction SilentlyContinue
+        if ($stats -and $stats.LastInteractionTime) {
+            $result = $stats.LastInteractionTime.ToString('dd/MM/yyyy')
+            Write-Verbose "[DEBUG] EXO LastInteraction: $UserPrincipalName -> $result"
+            return $result
         }
-        else {
-            $stats = Get-EXOMailboxStatistics -Identity $UserPrincipalName -ErrorAction SilentlyContinue
-            if ($stats -and $stats.LastLogonTime) {
-                $result = $stats.LastLogonTime.ToString('dd/MM/yyyy')
-                Write-Verbose "[DEBUG] EXO LastLogon: $UserPrincipalName -> $result"
-                return $result
-            }
-            Write-Verbose "[DEBUG] EXO LastLogon: $UserPrincipalName -> NULL (jamais connecte)"
-        }
+        Write-Verbose "[DEBUG] EXO LastInteraction: $UserPrincipalName -> NULL (jamais accedee)"
     }
     catch {
-        Write-Verbose "[DEBUG] EXO LastLogon ERROR: $UserPrincipalName -> $($_.Exception.Message)"
+        Write-Verbose "[DEBUG] EXO LastInteraction ERROR: $UserPrincipalName -> $($_.Exception.Message)"
     }
 
     return ''
