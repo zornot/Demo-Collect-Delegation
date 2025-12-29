@@ -499,15 +499,20 @@ function Get-MailboxLastLogon {
         3. EXO Statistics - fallback, inclut assistants
     .PARAMETER UserPrincipalName
         UPN de l'utilisateur (email principal).
+    .PARAMETER MailboxType
+        Type de mailbox (UserMailbox, SharedMailbox, etc.) pour affichage contextuel.
     .OUTPUTS
-        [string] Date formatee dd/MM/yyyy ou chaine vide si non disponible.
+        [string] Date formatee dd/MM/yyyy, "N/A (SharedMailbox)" ou chaine vide.
     #>
     [CmdletBinding()]
     [OutputType([string])]
     param(
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$UserPrincipalName
+        [string]$UserPrincipalName,
+
+        [Parameter()]
+        [string]$MailboxType = ''
     )
 
     $upnLower = $UserPrincipalName.ToLower()
@@ -543,12 +548,22 @@ function Get-MailboxLastLogon {
                 return $result
             }
             else {
-                Write-Verbose "[DEBUG] EXO LastLogon: $UserPrincipalName -> NULL (jamais connecte ou SharedMailbox)"
+                # SharedMailbox n'a pas de login direct (acces via delegation)
+                if ($MailboxType -eq 'SharedMailbox') {
+                    Write-Verbose "[DEBUG] EXO LastLogon: $UserPrincipalName -> N/A (SharedMailbox - pas de login direct)"
+                    return 'N/A (SharedMailbox)'
+                }
+                Write-Verbose "[DEBUG] EXO LastLogon: $UserPrincipalName -> NULL (jamais connecte)"
             }
         }
     }
     catch {
         Write-Verbose "[DEBUG] EXO LastLogon ERROR: $UserPrincipalName -> $($_.Exception.Message)"
+    }
+
+    # SharedMailbox sans stats retourne aussi N/A
+    if ($MailboxType -eq 'SharedMailbox') {
+        return 'N/A (SharedMailbox)'
     }
 
     return ''
@@ -1289,7 +1304,7 @@ try {
                 # UserPrincipalName pour Graph cache, fallback sur PrimarySmtpAddress si null
                 $upnForLookup = if ($mailbox.UserPrincipalName) { $mailbox.UserPrincipalName } else { $mailbox.PrimarySmtpAddress }
                 Write-Verbose "[DEBUG] Mailbox: $($mailbox.PrimarySmtpAddress) | UPN: $($mailbox.UserPrincipalName) | Lookup: $upnForLookup"
-                $mailboxLastLogon = Get-MailboxLastLogon -UserPrincipalName $upnForLookup
+                $mailboxLastLogon = Get-MailboxLastLogon -UserPrincipalName $upnForLookup -MailboxType $mailbox.RecipientTypeDetails
             }
 
             # Verifier si mailbox inactive
