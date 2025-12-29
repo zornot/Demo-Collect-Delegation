@@ -258,6 +258,12 @@ $script:ForensicMode = $false
 $script:SkippedTransitionalCount = 0
 $script:ForensicCollectedCount = 0
 
+# Variables pour strategie LastLogon
+$Script:LastLogonStrategy = 'None'      # 'SignInActivity', 'GraphReports', 'EXO', 'None'
+$Script:SignInActivityCache = $null     # Cache signInActivity (P1/P2)
+$Script:EmailActivityCache = $null      # Cache Graph Reports
+$Script:EXOFallbackWarned = $false      # Warning EXO affiche une seule fois
+
 #endregion Configuration
 
 #region UI Functions
@@ -371,6 +377,16 @@ function Initialize-EmailActivityCache {
         $csvContent = $response.Content.ReadAsStringAsync().Result
         $activityData = $csvContent | ConvertFrom-Csv
 
+        # Detecter anonymisation (premier UPN = hash MD5 32 chars hex)
+        $firstUpn = ($activityData | Select-Object -First 1).'User Principal Name'
+        if ($firstUpn -match '^[a-f0-9]{32}$') {
+            Write-Log -Message "Graph Reports anonymise - UPNs remplaces par hash MD5" -Level Warning
+            Write-Status -Type Warning -Message "Anonymisation Graph Reports ACTIVE - fallback EXO" -Indent 1
+            Write-Status -Type Info -Message "Pour desactiver : Admin Center > Parametres > Rapports" -Indent 2
+            $Script:LastLogonStrategy = 'EXO'
+            return $false
+        }
+
         # Construire hashtable UPN -> LastActivityDate
         $Script:EmailActivityCache = @{}
         foreach ($row in $activityData) {
@@ -387,12 +403,8 @@ function Initialize-EmailActivityCache {
             }
         }
 
+        $Script:LastLogonStrategy = 'GraphReports'
         Write-Log -Message "Cache activite email charge: $($Script:EmailActivityCache.Count) utilisateurs" -Level Info -NoConsole
-        # Debug: afficher les UPNs dans le cache
-        Write-Verbose "[DEBUG] UPNs dans le cache Graph:"
-        foreach ($key in $Script:EmailActivityCache.Keys) {
-            Write-Verbose "  - $key -> $($Script:EmailActivityCache[$key].ToString('yyyy-MM-dd'))"
-        }
         return $true
     }
     catch {
@@ -402,14 +414,89 @@ function Initialize-EmailActivityCache {
     }
 }
 
+function Initialize-SignInActivityCache {
+    <#
+    .SYNOPSIS
+        Charge le cache LastLogon depuis signInActivity (Azure AD P1/P2).
+    .DESCRIPTION
+        Utilise l'API Graph avec la propriete SignInActivity pour obtenir
+        lastSuccessfulSignInDateTime. Meilleure precision, jamais anonymise.
+        Necessite licence Azure AD Premium P1 ou P2.
+    .OUTPUTS
+        [bool] $true si cache charge, $false si licence manquante ou erreur
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+
+    if ($null -ne $Script:SignInActivityCache -and $Script:SignInActivityCache.Count -gt 0) {
+        Write-Verbose "[i] Cache signInActivity deja charge"
+        return $true
+    }
+
+    try {
+        Write-Verbose "[i] Tentative chargement signInActivity (P1/P2)..."
+
+        # Test avec un seul utilisateur pour verifier la disponibilite
+        $testUser = Invoke-MgGraphRequest -Method GET `
+            -Uri "https://graph.microsoft.com/v1.0/users?`$top=1&`$select=userPrincipalName,signInActivity" `
+            -ErrorAction Stop
+
+        # Si on arrive ici, la licence est disponible
+        Write-Status -Type Success -Message "Licence P1/P2 detectee - utilisation signInActivity" -Indent 1
+
+        # Charger tous les utilisateurs avec signInActivity
+        $allUsers = [System.Collections.Generic.List[object]]::new()
+        $uri = "https://graph.microsoft.com/v1.0/users?`$select=userPrincipalName,signInActivity&`$top=999"
+
+        do {
+            $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+            if ($response.value) {
+                $allUsers.AddRange($response.value)
+            }
+            $uri = $response.'@odata.nextLink'
+        } while ($uri)
+
+        # Construire le cache
+        $Script:SignInActivityCache = @{}
+        foreach ($user in $allUsers) {
+            $upn = $user.userPrincipalName
+            $lastSignIn = $user.signInActivity.lastSuccessfulSignInDateTime
+
+            if (-not [string]::IsNullOrEmpty($upn) -and -not [string]::IsNullOrEmpty($lastSignIn)) {
+                try {
+                    $Script:SignInActivityCache[$upn.ToLower()] = [datetime]::Parse($lastSignIn)
+                }
+                catch {
+                    # Date invalide - ignorer
+                }
+            }
+        }
+
+        $Script:LastLogonStrategy = 'SignInActivity'
+        Write-Log -Message "Cache signInActivity charge: $($Script:SignInActivityCache.Count) utilisateurs" -Level Info -NoConsole
+        return $true
+    }
+    catch {
+        if ($_.Exception.Message -match '(403|Forbidden|license|Premium|Authorization_RequestDenied)') {
+            Write-Verbose "[i] signInActivity non disponible (licence P1/P2 requise)"
+        }
+        else {
+            Write-Log -Message "Erreur signInActivity: $($_.Exception.Message)" -Level Warning -NoConsole
+        }
+        return $false
+    }
+}
+
 function Get-MailboxLastLogon {
     <#
     .SYNOPSIS
-        Retourne la date de derniere activite email d'une mailbox.
+        Retourne la date de derniere connexion d'une mailbox.
     .DESCRIPTION
-        Utilise le cache Graph Reports API (Last Activity Date) pour une
-        information precise sans les faux positifs des assistants de mailbox.
-        Fallback sur EXO si Graph non disponible.
+        Utilise la meilleure source disponible en cascade :
+        1. signInActivity (P1/P2) - plus precis, jamais anonymise
+        2. Graph Reports - bon compromis si non-anonymise
+        3. EXO Statistics - fallback, inclut assistants
     .PARAMETER UserPrincipalName
         UPN de l'utilisateur (email principal).
     .OUTPUTS
@@ -423,22 +510,27 @@ function Get-MailboxLastLogon {
         [string]$UserPrincipalName
     )
 
-    # Priorite 1 : Cache Graph (donnees precises)
-    if ($null -ne $Script:EmailActivityCache -and $Script:EmailActivityCache.Count -gt 0) {
-        $upnLower = $UserPrincipalName.ToLower()
-        if ($Script:EmailActivityCache.ContainsKey($upnLower)) {
-            $result = $Script:EmailActivityCache[$upnLower].ToString('dd/MM/yyyy')
-            Write-Verbose "[DEBUG] LastLogon MATCH: $upnLower -> $result"
-            return $result
+    $upnLower = $UserPrincipalName.ToLower()
+
+    # Priorite 1 : signInActivity (P1/P2)
+    if ($Script:LastLogonStrategy -eq 'SignInActivity' -and $null -ne $Script:SignInActivityCache) {
+        if ($Script:SignInActivityCache.ContainsKey($upnLower)) {
+            return $Script:SignInActivityCache[$upnLower].ToString('dd/MM/yyyy')
         }
-        # UPN non trouve dans cache Graph - pas d'activite recente
-        Write-Verbose "[DEBUG] LastLogon NO MATCH: $upnLower (not in cache)"
         return ''
     }
 
-    # Fallback : EXO Statistics (avec warning si premiere fois)
+    # Priorite 2 : Graph Reports (si non-anonymise)
+    if ($Script:LastLogonStrategy -eq 'GraphReports' -and $null -ne $Script:EmailActivityCache) {
+        if ($Script:EmailActivityCache.ContainsKey($upnLower)) {
+            return $Script:EmailActivityCache[$upnLower].ToString('dd/MM/yyyy')
+        }
+        return ''
+    }
+
+    # Priorite 3 : EXO Statistics (fallback)
     if (-not $Script:EXOFallbackWarned) {
-        Write-Log -Message "Graph indisponible - fallback sur EXO (LastLogonTime inclut assistants)" -Level Warning
+        Write-Log -Message "Utilisation EXO Statistics (LastLogonTime inclut assistants)" -Level Warning -NoConsole
         $Script:EXOFallbackWarned = $true
     }
 
@@ -987,20 +1079,34 @@ try {
         Write-Status -Type Action -Message "Connexion Microsoft Graph..."
         $configPath = Join-Path $PSScriptRoot "Config\Settings.json"
         Initialize-GraphConnection -ConfigPath $configPath
-        $Script:GraphConnection = Connect-GraphConnection -Interactive -Scopes @('Reports.Read.All')
+
+        # Scopes etendus pour signInActivity (P1/P2)
+        $scopes = @('Reports.Read.All', 'AuditLog.Read.All', 'User.Read.All')
+        $Script:GraphConnection = Connect-GraphConnection -Interactive -Scopes $scopes
+        $Script:LastLogonStrategy = 'None'
 
         if ($Script:GraphConnection.IsConnected) {
-            Write-Status -Type Action -Message "Chargement cache activite email..." -Indent 1
-            $cacheLoaded = Initialize-EmailActivityCache
-            if ($cacheLoaded) {
-                Write-Status -Type Success -Message "Cache charge: $($Script:EmailActivityCache.Count) utilisateurs (Graph Reports)" -Indent 1
+            # Strategie 1 : Tenter signInActivity (P1/P2)
+            Write-Status -Type Action -Message "Detection licence P1/P2..." -Indent 1
+            $signInLoaded = Initialize-SignInActivityCache
+
+            if (-not $signInLoaded) {
+                # Strategie 2 : Fallback Graph Reports
+                Write-Status -Type Action -Message "Chargement Graph Reports..." -Indent 1
+                $reportsLoaded = Initialize-EmailActivityCache
             }
-            else {
-                Write-Status -Type Warning -Message "Fallback EXO pour LastLogon (moins precis)" -Indent 1
+
+            # Afficher strategie finale
+            switch ($Script:LastLogonStrategy) {
+                'SignInActivity' { Write-Status -Type Success -Message "LastLogon: signInActivity ($($Script:SignInActivityCache.Count) users)" -Indent 1 }
+                'GraphReports' { Write-Status -Type Success -Message "LastLogon: Graph Reports ($($Script:EmailActivityCache.Count) users)" -Indent 1 }
+                'EXO' { Write-Status -Type Warning -Message "LastLogon: EXO Statistics (moins precis)" -Indent 1 }
+                default { Write-Status -Type Warning -Message "LastLogon: Non disponible" -Indent 1 }
             }
         }
         else {
-            Write-Status -Type Warning -Message "Graph non disponible - fallback EXO pour LastLogon" -Indent 1
+            Write-Status -Type Warning -Message "Graph non disponible - LastLogon via EXO" -Indent 1
+            $Script:LastLogonStrategy = 'EXO'
         }
     }
 
