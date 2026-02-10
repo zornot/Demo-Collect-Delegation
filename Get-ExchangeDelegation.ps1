@@ -438,7 +438,7 @@ function Initialize-SignInActivityCache {
         Write-Verbose "[i] Tentative chargement signInActivity (P1/P2)..."
 
         # Test avec un seul utilisateur pour verifier la disponibilite
-        $testUser = Invoke-MgGraphRequest -Method GET `
+        $null = Invoke-MgGraphRequest -Method GET `
             -Uri "https://graph.microsoft.com/v1.0/users?`$top=1&`$select=userPrincipalName,signInActivity" `
             -ErrorAction Stop
 
@@ -1104,7 +1104,7 @@ try {
             if (-not $signInLoaded) {
                 # Strategie 2 : Fallback Graph Reports
                 Write-Status -Type Action -Message "Chargement Graph Reports..." -Indent 1
-                $reportsLoaded = Initialize-EmailActivityCache
+                $null = Initialize-EmailActivityCache
             }
 
             # Afficher strategie finale
