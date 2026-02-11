@@ -1231,7 +1231,7 @@ try {
         $csvHeader = @(
             'MailboxEmail', 'MailboxDisplayName', 'TrusteeEmail', 'TrusteeDisplayName',
             'DelegationType', 'AccessRights', 'FolderPath', 'IsOrphan',
-            'IsInactive', 'IsSoftDeleted', 'MailboxType', 'MailboxLastLogon', 'CollectedAt'
+            'IsInactive', 'IsSoftDeleted', 'MailboxType', 'MailboxLastLogon', 'LastLogonSource', 'CollectedAt'
         )
         $csvHeader -join ',' | Set-Content -Path $exportFilePath -Encoding UTF8
         Write-Log "CSV initialise: $exportFilePath" -Level DEBUG -NoConsole
