@@ -15,13 +15,13 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
-| [FEAT-014](FEAT-014-lastlogon-source-column.md) | Colonne LastLogonSource dans CSV | ~ |
 | [FEAT-012](FEAT-012-export-html-delegations.md) | Export HTML des delegations | ~ |
 
 ## Issues Terminees
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| FEAT-014 | Colonne LastLogonSource dans CSV | 2026-02-11 | local |
 | BUG-012 | LastLogon detection licence + anonymisation | 2025-12-29 | local |
 | BUG-011 | LastLogon UPN mismatch | 2025-12-26 | local |
 | REFACTOR-002 | Remplacer MgConnection par GraphConnection | 2025-12-26 | local |
@@ -54,5 +54,5 @@
 
 ---
 
-*Derniere mise a jour : 2025-12-26*
-*FEAT-013 remplace DOC-002 avec solution Graph Reports API*
+*Derniere mise a jour : 2026-02-11*
+*FEAT-014 ajoute tracabilite source LastLogon dans CSV*
