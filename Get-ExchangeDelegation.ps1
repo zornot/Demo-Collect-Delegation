@@ -725,7 +725,8 @@ function New-DelegationRecord {
         [bool]$IsInactive = $false,
         [bool]$IsSoftDeleted = $false,
         [string]$MailboxType = '',
-        [string]$MailboxLastLogon = ''
+        [string]$MailboxLastLogon = '',
+        [string]$LastLogonSource = ''
     )
 
     [PSCustomObject]@{
@@ -741,6 +742,7 @@ function New-DelegationRecord {
         IsSoftDeleted      = $IsSoftDeleted
         MailboxType        = $MailboxType
         MailboxLastLogon   = $MailboxLastLogon
+        LastLogonSource    = $LastLogonSource
         CollectedAt        = $script:CollectionTimestamp
     }
 }
@@ -795,7 +797,8 @@ function Get-MailboxFullAccessDelegation {
                 -DelegationType 'FullAccess' `
                 -AccessRights 'FullAccess' `
                 -IsOrphan $isOrphan `
-                -IsSoftDeleted $isSoftDeleted
+                -IsSoftDeleted $isSoftDeleted `
+                -LastLogonSource $Script:LastLogonStrategy
 
             $delegationList.Add($delegationRecord)
         }
@@ -856,7 +859,8 @@ function Get-MailboxSendAsDelegation {
                 -DelegationType 'SendAs' `
                 -AccessRights 'SendAs' `
                 -IsOrphan $isOrphan `
-                -IsSoftDeleted $isSoftDeleted
+                -IsSoftDeleted $isSoftDeleted `
+                -LastLogonSource $Script:LastLogonStrategy
 
             $delegationList.Add($delegationRecord)
         }
@@ -895,7 +899,8 @@ function Get-MailboxSendOnBehalfDelegation {
                     -TrusteeDisplayName $trusteeInfo.DisplayName `
                     -DelegationType 'SendOnBehalf' `
                     -AccessRights 'SendOnBehalf' `
-                    -IsOrphan $isOrphan
+                    -IsOrphan $isOrphan `
+                    -LastLogonSource $Script:LastLogonStrategy
 
                 $delegationList.Add($delegationRecord)
             }
@@ -964,7 +969,8 @@ function Get-MailboxCalendarDelegation {
                 -DelegationType 'Calendar' `
                 -AccessRights $accessRightsList `
                 -FolderPath $folderName `
-                -IsOrphan $isOrphan
+                -IsOrphan $isOrphan `
+                -LastLogonSource $Script:LastLogonStrategy
 
             $delegationList.Add($delegationRecord)
         }
@@ -995,7 +1001,8 @@ function Get-MailboxForwardingDelegation {
             -TrusteeEmail $forwardingAddress `
             -TrusteeDisplayName $forwardingAddress `
             -DelegationType 'Forwarding' `
-            -AccessRights 'ForwardingSmtpAddress'
+            -AccessRights 'ForwardingSmtpAddress' `
+            -LastLogonSource $Script:LastLogonStrategy
 
         $delegationList.Add($delegationRecord)
     }
@@ -1012,7 +1019,8 @@ function Get-MailboxForwardingDelegation {
                     -TrusteeEmail $forwardingRecipient.PrimarySmtpAddress `
                     -TrusteeDisplayName $forwardingRecipient.DisplayName `
                     -DelegationType 'Forwarding' `
-                    -AccessRights 'ForwardingAddress'
+                    -AccessRights 'ForwardingAddress' `
+                    -LastLogonSource $Script:LastLogonStrategy
 
                 $delegationList.Add($delegationRecord)
             }

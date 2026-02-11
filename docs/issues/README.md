@@ -15,6 +15,7 @@
 
 | ID | Titre | Priorite |
 |----|-------|----------|
+| [FEAT-014](FEAT-014-lastlogon-source-column.md) | Colonne LastLogonSource dans CSV | ~ |
 | [FEAT-012](FEAT-012-export-html-delegations.md) | Export HTML des delegations | ~ |
 
 ## Issues Terminees
