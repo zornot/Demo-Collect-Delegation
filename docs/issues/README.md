@@ -16,6 +16,7 @@
 | ID | Titre | Priorite |
 |----|-------|----------|
 | [FEAT-012](FEAT-012-export-html-delegations.md) | Export HTML des delegations | ~ |
+| [BUG-013](BUG-013-signinactivity-silent-failure.md) | signInActivity echec silencieux - Write-Verbose → Write-Status + Write-Log | ~ |
 
 ## Issues Terminees
 
@@ -51,8 +52,9 @@
 | PERF-001 | Parallelisation collecte | Isolation runspaces Exchange incompatible |
 | FEAT-006 | TrusteeLastLogon via Graph API | Requiert Azure AD P1 (~150 USD/mois) |
 | DRY-001 | Optimisation AddRange | AddRange incompatible List[PSCustomObject] |
+| BUG-013 | signInActivity echec silencieux | Reouvert - Write-Verbose → Write-Status + Write-Log |
 
 ---
 
-*Derniere mise a jour : 2026-02-11*
-*FEAT-014 ajoute tracabilite source LastLogon dans CSV*
+*Derniere mise a jour : 2026-02-13*
+*BUG-013 signInActivity echec silencieux - diagnostic scopes*

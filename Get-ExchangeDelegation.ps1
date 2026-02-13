@@ -478,11 +478,14 @@ function Initialize-SignInActivityCache {
         return $true
     }
     catch {
-        if ($_.Exception.Message -match '(403|Forbidden|license|Premium|Authorization_RequestDenied)') {
-            Write-Verbose "[i] signInActivity non disponible (licence P1/P2 requise)"
+        $errorMessage = $_.Exception.Message
+        if ($errorMessage -match '(403|Forbidden|license|Premium|Authorization_RequestDenied)') {
+            Write-Status -Type Info -Message "signInActivity non disponible (Entra ID P1/P2 requis)" -Indent 2
+            Write-Log -Message "signInActivity: $errorMessage" -Level Warning -NoConsole
         }
         else {
-            Write-Log -Message "Erreur signInActivity: $($_.Exception.Message)" -Level Warning -NoConsole
+            Write-Status -Type Warning -Message "signInActivity: erreur inattendue" -Indent 2
+            Write-Log -Message "Erreur signInActivity: $errorMessage" -Level Warning
         }
         return $false
     }
