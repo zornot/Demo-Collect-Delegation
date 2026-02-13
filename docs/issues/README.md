@@ -16,12 +16,12 @@
 | ID | Titre | Priorite |
 |----|-------|----------|
 | [FEAT-012](FEAT-012-export-html-delegations.md) | Export HTML des delegations | ~ |
-| [BUG-013](BUG-013-signinactivity-silent-failure.md) | signInActivity echec silencieux - Write-Verbose → Write-Status + Write-Log | ~ |
 
 ## Issues Terminees
 
 | ID | Titre | Date | GitHub |
 |----|-------|------|--------|
+| BUG-013 | signInActivity echec silencieux - logging | 2026-02-13 | local |
 | FEAT-014 | Colonne LastLogonSource dans CSV | 2026-02-11 | local |
 | BUG-012 | LastLogon detection licence + anonymisation | 2025-12-29 | local |
 | BUG-011 | LastLogon UPN mismatch | 2025-12-26 | local |
@@ -52,9 +52,8 @@
 | PERF-001 | Parallelisation collecte | Isolation runspaces Exchange incompatible |
 | FEAT-006 | TrusteeLastLogon via Graph API | Requiert Azure AD P1 (~150 USD/mois) |
 | DRY-001 | Optimisation AddRange | AddRange incompatible List[PSCustomObject] |
-| BUG-013 | signInActivity echec silencieux | Reouvert - Write-Verbose → Write-Status + Write-Log |
 
 ---
 
 *Derniere mise a jour : 2026-02-13*
-*BUG-013 signInActivity echec silencieux - diagnostic scopes*
+*BUG-013 implementee - Write-Verbose remplace par Write-Status + Write-Log*

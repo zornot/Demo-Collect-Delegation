@@ -118,5 +118,6 @@ Labels : bug ~ logging
 | Champ | Valeur |
 |-------|--------|
 | GitHub Issue | local |
-| Statut | RESOLVED |
+| Statut | CLOSED |
+| Commit | c675157 |
 | Branche | fix/BUG-013-signinactivity-silent-failure |
